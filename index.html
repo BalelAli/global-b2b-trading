@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Global B2B Trading connects buyers and suppliers worldwide.">
+<title>Global B2B Trading | Connect. Negotiate. Trade.</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--pale:#eef6fc;--ink:#243b53;--muted:#627d98;--line:#d9e2ec}
+*{box-sizing:border-box}body{margin:0;font:16px/1.55 Arial,sans-serif;color:var(--ink);background:#f7fafc}
+header{background:#fff;border-bottom:1px solid var(--line);padding:15px max(5%,calc((100% - 1120px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{font-size:20px;font-weight:800;color:var(--navy);letter-spacing:.3px}.brand span{color:var(--blue)}
+nav{display:flex;gap:18px;flex-wrap:wrap}a{color:var(--blue);text-decoration:none}
+.hero{background:linear-gradient(120deg,#102a43,#1769aa);color:white;padding:68px 5%;text-align:center}
+.hero h1{font-size:clamp(32px,5vw,48px);line-height:1.12;margin:0 0 14px}.hero p{font-size:18px;opacity:.94;margin:0 auto 25px;max-width:700px}
+.wrap{max-width:1120px;margin:auto;padding:34px 20px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.card{background:white;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 5px 18px #102a430b}
+h2{color:var(--navy);margin:0 0 16px}h3{color:var(--navy);margin-top:0}
+.muted{color:var(--muted);font-size:14px}
+label{display:block;font-weight:700;font-size:14px;margin:12px 0 5px}
+input,select{width:100%;padding:12px;border:1px solid #bcccdc;border-radius:8px;font:inherit;background:white}
+button{border:0;border-radius:8px;background:var(--blue);color:white;padding:12px 18px;font-weight:700;cursor:pointer}
+button.secondary{background:#e6f0f8;color:var(--navy)}button:disabled{opacity:.6;cursor:wait}
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.notice{background:#fff8e6;border:1px solid #f3d48a;padding:13px 15px;border-radius:9px;color:#684d08;font-size:14px}
+#status{margin-top:12px;min-height:24px;font-weight:700;overflow-wrap:anywhere}
+section{scroll-margin-top:20px}.steps{padding:26px 0}.steps .card p{margin-bottom:0}
+footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid var(--line);background:white}
+@media(max-width:600px){header{padding:14px 18px}.hero{padding:50px 20px}nav{gap:12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">GLOBAL <span>B2B</span> TRADING</div>
+  <nav aria-label="Main navigation"><a href="#how">How it works</a><a href="#account">Join / Sign in</a></nav>
+</header>
+<section class="hero">
+  <h1>Connect. Negotiate. Trade.</h1>
+  <p>Discover business opportunities and connect with buyers and suppliers around the world.</p>
+  <div class="actions"><a href="#account"><button type="button">Join the Marketplace</button></a><a href="#how"><button class="secondary" type="button">How it works</button></a></div>
+</section>
+<main class="wrap">
+  <div class="notice">Early access: this is the first website version. Account creation becomes active only after the free database setup in the README is completed.</div>
+  <section id="how" class="steps">
+    <h2>How Global B2B Trading works</h2>
+    <div class="grid">
+      <article class="card"><h3>1. Join</h3><p class="muted">Create a buyer or seller account using your business details.</p></article>
+      <article class="card"><h3>2. Discover</h3><p class="muted">Find products, suppliers and potential business partners.</p></article>
+      <article class="card"><h3>3. Request a quote</h3><p class="muted">Discuss price, quantity, shipping and delivery terms before an order.</p></article>
+    </div>
+  </section>
+  <section id="account" class="steps">
+    <h2>Buyer &amp; Seller Accounts</h2>
+    <div class="grid">
+      <article class="card">
+        <h3>Create an account</h3>
+        <p class="muted">Select your role and provide accurate business information.</p>
+        <form id="signup">
+          <label for="role">Account type</label>
+          <select id="role" required><option value="buyer">Buyer</option><option value="seller">Seller / Supplier</option></select>
+          <label for="fullName">Full name</label><input id="fullName" required maxlength="80" autocomplete="name" placeholder="Your full name">
+          <label for="company">Company name</label><input id="company" required maxlength="120" autocomplete="organization" placeholder="Your company">
+          <label for="country">Country</label><input id="country" required maxlength="80" autocomplete="country-name" placeholder="Your country">
+          <label for="signupEmail">Email</label><input id="signupEmail" type="email" required autocomplete="email" placeholder="you@example.com">
+          <label for="signupPassword">Password</label><input id="signupPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+          <button id="signupButton" type="submit" style="margin-top:16px;width:100%">Create account</button>
+        </form>
+      </article>
+      <article class="card">
+        <h3>Already registered?</h3>
+        <p class="muted">Sign in to your marketplace account.</p>
+        <form id="login">
+          <label for="loginEmail">Email</label><input id="loginEmail" type="email" required autocomplete="email">
+          <label for="loginPassword">Password</label><input id="loginPassword" type="password" required autocomplete="current-password">
+          <button id="loginButton" type="submit" style="margin-top:16px;width:100%">Sign in</button>
+        </form>
+        <div id="status" role="status" aria-live="polite"></div>
+        <p class="muted">Never share your password with anyone. Use an email address you can access.</p>
+      </article>
+    </div>
+  </section>
+</main>
+<footer>© 2026 Global B2B Trading · Connect. Negotiate. Trade.</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "PASTE_SUPABASE_PROJECT_URL_HERE";
+const SUPABASE_ANON_KEY = "PASTE_SUPABASE_ANON_KEY_HERE";
+const configured = window.supabase &&
+  SUPABASE_URL.startsWith("https://") &&
+  !SUPABASE_URL.includes("PASTE_") &&
+  !SUPABASE_ANON_KEY.includes("PASTE_");
+const db = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const status = document.getElementById("status");
+const showStatus = (message) => { status.textContent = message; };
+if (!db) showStatus("Setup not complete: follow README.md to connect the database before using registration.");
+
+document.getElementById("signup").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!db) return showStatus("Registration is not active yet. Complete the free Supabase setup in README.md.");
+  const button = document.getElementById("signupButton");
+  button.disabled = true; showStatus("Creating your account…");
+  try {
+    const { data, error } = await db.auth.signUp({
+      email: document.getElementById("signupEmail").value.trim(),
+      password: document.getElementById("signupPassword").value,
+      options: { data: {
+        role: document.getElementById("role").value,
+        full_name: document.getElementById("fullName").value.trim(),
+        company_name: document.getElementById("company").value.trim(),
+        country: document.getElementById("country").value.trim()
+      }}
+    });
+    if (error) throw error;
+    showStatus(data.session ? "Account created. You are signed in." : "Account created. Please check your email to confirm it.");
+  } catch (error) { showStatus(error.message || "Could not create the account. Please try again."); }
+  finally { button.disabled = false; }
+});
+
+document.getElementById("login").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!db) return showStatus("Sign in is not active yet. Complete the free Supabase setup in README.md.");
+  const button = document.getElementById("loginButton");
+  button.disabled = true; showStatus("Signing in…");
+  try {
+    const { error } = await db.auth.signInWithPassword({
+      email: document.getElementById("loginEmail").value.trim(),
+      password: document.getElementById("loginPassword").value
+    });
+    if (error) throw error;
+    showStatus("Signed in successfully. The seller and buyer dashboards are the next development stage.");
+  } catch (error) { showStatus(error.message || "Could not sign in. Please check your details."); }
+  finally { button.disabled = false; }
+});
+</script>
+</body>
+</html>
