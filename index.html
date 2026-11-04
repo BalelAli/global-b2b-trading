@@ -40,7 +40,7 @@ footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid va
   <div class="actions"><a href="#account"><button type="button">Join the Marketplace</button></a><a href="#how"><button class="secondary" type="button">How it works</button></a></div>
 </section>
 <main class="wrap">
-  <div class="notice">Early access: this is the first website version. Account creation becomes active only after the free database setup in the README is completed.</div>
+  <div class="notice">Free early access: buyer and seller registration is available. If anything goes wrong, the message will appear below the registration form.</div>
   <section id="how" class="steps">
     <h2>How Global B2B Trading works</h2>
     <div class="grid">
@@ -65,6 +65,7 @@ footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid va
           <label for="signupPassword">Password</label><input id="signupPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
           <button id="signupButton" type="submit" style="margin-top:16px;width:100%">Create account</button>
         </form>
+        <div id="signupStatus" role="status" aria-live="polite" style="margin-top:12px;min-height:24px;font-weight:700;overflow-wrap:anywhere"></div>
       </article>
       <article class="card">
         <h3>Already registered?</h3>
@@ -85,14 +86,25 @@ footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid va
 <script>
 const SUPABASE_URL = "https://koxsrvmzzpnzfgrufcto.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_k3IhbhoNFmrihxdrIrgAug_YbfG7cex";
-const configured = window.supabase &&
-  SUPABASE_URL.startsWith("https://") &&
-  !SUPABASE_URL.includes("PASTE_") &&
-  !SUPABASE_ANON_KEY.includes("PASTE_");
-const db = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const status = document.getElementById("status");
-const showStatus = (message) => { status.textContent = message; };
-if (!db) showStatus("Setup not complete: follow README.md to connect the database before using registration.");
+const signupStatus = document.getElementById("signupStatus");
+const showStatus = (message) => {
+  status.textContent = message;
+  signupStatus.textContent = message;
+};
+let db = null;
+try {
+  if (window.supabase && typeof window.supabase.createClient === "function" &&
+      SUPABASE_URL.startsWith("https://") &&
+      SUPABASE_ANON_KEY.startsWith("sb_publishable_")) {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    showStatus("Connection setup problem: refresh the page. If this message remains, contact support.");
+  }
+} catch (initError) {
+  console.error("Supabase initialization error:", initError);
+  showStatus("Could not connect to the registration service. Please refresh and try again.");
+}
 
 document.getElementById("signup").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -112,7 +124,10 @@ document.getElementById("signup").addEventListener("submit", async (event) => {
     });
     if (error) throw error;
     showStatus(data.session ? "Account created. You are signed in." : "Account created. Please check your email to confirm it.");
-  } catch (error) { showStatus(error.message || "Could not create the account. Please try again."); }
+  } catch (error) {
+    console.error("Buyer/seller registration error:", error);
+    showStatus(error.message || "Could not create the account. Please try again.");
+  }
   finally { button.disabled = false; }
 });
 
