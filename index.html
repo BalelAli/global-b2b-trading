@@ -142,7 +142,8 @@ document.getElementById("login").addEventListener("submit", async (event) => {
       password: document.getElementById("loginPassword").value
     });
     if (error) throw error;
-    showStatus("Signed in successfully. The seller and buyer dashboards are the next development stage.");
+    showStatus("Signed in successfully. Opening your dashboard…");
+    window.location.href = "dashboard.html";
   } catch (error) { showStatus(error.message || "Could not sign in. Please check your details."); }
   finally { button.disabled = false; }
 });
