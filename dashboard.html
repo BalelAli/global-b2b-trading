@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Your Global B2B Trading buyer or seller dashboard.">
+<title>Dashboard | Global B2B Trading</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--pale:#eef6fc;--ink:#243b53;--muted:#627d98;--line:#d9e2ec;--green:#147d54}
+*{box-sizing:border-box}body{margin:0;font:15px/1.55 Arial,sans-serif;color:var(--ink);background:#f5f8fb}
+header{background:#fff;border-bottom:1px solid var(--line);padding:14px max(5%,calc((100% - 1120px)/2));display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-size:19px;font-weight:800;color:var(--navy)}.brand span{color:var(--blue)}
+button{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:11px 16px;font-weight:700;cursor:pointer}button.secondary{background:#e6f0f8;color:var(--navy)}button:disabled{opacity:.6}
+main{max-width:1120px;margin:28px auto;padding:0 18px}.welcome{background:linear-gradient(120deg,#102a43,#1769aa);color:#fff;border-radius:14px;padding:25px;margin-bottom:20px}.welcome h1{margin:0 0 5px;font-size:27px}.welcome p{margin:0;opacity:.9}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 4px 14px #102a4308}
+h2{font-size:20px;color:var(--navy);margin:0 0 14px}h3{font-size:17px;color:var(--navy);margin:0 0 8px}
+label{display:block;font-weight:700;font-size:13px;margin:10px 0 5px}input,select,textarea{width:100%;padding:11px;border:1px solid #bcccdc;border-radius:8px;font:inherit;background:#fff}textarea{min-height:85px;resize:vertical}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:var(--muted);font-size:13px}.status{margin:10px 0;min-height:22px;font-weight:700;overflow-wrap:anywhere}.product{border:1px solid var(--line);border-radius:10px;padding:15px;margin:10px 0}.product p{margin:5px 0}.pill{display:inline-block;background:var(--pale);color:var(--navy);padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700}.empty{padding:16px;background:#f7fafc;border-radius:8px;color:var(--muted)}.hidden{display:none!important}
+@media(max-width:600px){.formgrid{grid-template-columns:1fr}header{padding:13px 18px}.welcome{padding:20px}}
+</style>
+</head>
+<body>
+<header><div class="brand">GLOBAL <span>B2B</span> TRADING</div><div><button class="secondary" id="homeBtn" type="button">Home</button> <button id="logoutBtn" type="button">Sign out</button></div></header>
+<main>
+  <div class="welcome"><h1 id="welcomeTitle">Your dashboard</h1><p id="welcomeSub">Loading your account…</p></div>
+  <div id="pageStatus" class="status" role="status" aria-live="polite"></div>
+  <section id="sellerArea" class="hidden">
+    <div class="grid">
+      <article class="card">
+        <h2>Add a product</h2>
+        <form id="productForm">
+          <label for="productName">Product name</label><input id="productName" required maxlength="160" placeholder="e.g. 100% cotton T-shirts">
+          <div class="formgrid"><div><label for="productCategory">Category</label><input id="productCategory" required maxlength="80" placeholder="Apparel"></div><div><label for="productCountry">Country of origin</label><input id="productCountry" required maxlength="80" placeholder="Bangladesh"></div></div>
+          <label for="productDescription">Description</label><textarea id="productDescription" maxlength="1500" placeholder="Describe quality, material, specifications…"></textarea>
+          <div class="formgrid"><div><label for="minQty">Minimum order quantity</label><input id="minQty" type="number" min="1" step="1" value="100" required></div><div><label for="productPrice">Indicative unit price (optional)</label><input id="productPrice" type="number" min="0" step="0.01" placeholder="e.g. 4.50"></div></div>
+          <label for="productCurrency">Currency</label><select id="productCurrency"><option value="USD">USD</option><option value="EUR">EUR</option><option value="BDT">BDT</option><option value="GBP">GBP</option></select>
+          <button id="addProductBtn" type="submit" style="margin-top:14px">Publish product</button>
+        </form>
+      </article>
+      <article class="card"><h2>My listed products</h2><div id="sellerProducts" class="muted">Loading…</div></article>
+    </div>
+    <article class="card"><h2>Buyer inquiries (RFQs)</h2><div id="sellerRfqs" class="muted">Loading…</div></article>
+  </section>
+  <section id="buyerArea" class="hidden">
+    <article class="card"><h2>Find products</h2><p class="muted">Browse active supplier listings and send a request for quotation.</p><div id="marketProducts">Loading products…</div></article>
+    <article class="card"><h2>My quotation requests</h2><div id="buyerRfqs">Loading…</div></article>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://koxsrvmzzpnzfgrufcto.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_k3IhbhoNFmrihxdrIrgAug_YbfG7cex";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = (id) => document.getElementById(id);
+const setStatus = (msg) => { $("pageStatus").textContent = msg || ""; };
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let currentUser = null, currentProfile = null;
+
+$("homeBtn").addEventListener("click", () => location.href = "./");
+$("logoutBtn").addEventListener("click", async () => {
+  $("logoutBtn").disabled = true;
+  const {error} = await db.auth.signOut();
+  if (error) { setStatus(error.message); $("logoutBtn").disabled = false; return; }
+  location.href = "./";
+});
+
+async function loadProfile() {
+  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country").eq("id",currentUser.id).single();
+  if (error) throw new Error("Could not load your buyer/seller profile. Please check the profile table setup in Supabase. " + error.message);
+  currentProfile = data;
+  $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
+  $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase();
+  if (data.role === "seller") {
+    $("sellerArea").classList.remove("hidden");
+    await loadSellerData();
+  } else {
+    $("buyerArea").classList.remove("hidden");
+    await loadBuyerData();
+  }
+}
+
+async function loadSellerData() {
+  const [products,rfqs] = await Promise.all([
+    db.from("products").select("*").eq("seller_id",currentUser.id).order("created_at",{ascending:false}),
+    db.from("rfqs").select("id,quantity,target_price,message,status,created_at,products(name,currency)").order("created_at",{ascending:false})
+  ]);
+  if (products.error) throw new Error("Products table is not ready: " + products.error.message);
+  if (rfqs.error) throw new Error("Could not load buyer inquiries: " + rfqs.error.message);
+  $("sellerProducts").innerHTML = products.data.length ? products.data.map(p =>
+    '<div class="product"><strong>'+esc(p.name)+'</strong> <span class="pill">'+esc(p.status)+'</span><p class="muted">'+esc(p.category)+' · MOQ '+esc(p.min_order_qty)+' · '+esc(p.country)+'</p><p>'+esc(p.description)+'</p><p class="muted">'+(p.price ? esc(p.currency)+' '+esc(p.price) : 'Price on request')+'</p></div>'
+  ).join("") : '<div class="empty">You have not published any products yet.</div>';
+  $("sellerRfqs").innerHTML = rfqs.data.length ? rfqs.data.map(r =>
+    '<div class="product"><strong>'+esc(r.products?.name || "Product inquiry")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p><p class="muted">'+new Date(r.created_at).toLocaleString()+'</p></div>'
+  ).join("") : '<div class="empty">No buyer inquiries yet. Publish products so buyers can contact you.</div>';
+}
+
+async function loadBuyerData() {
+  const [products,rfqs] = await Promise.all([
+    db.from("products").select("id,seller_id,name,category,description,min_order_qty,price,currency,country").eq("status","active").order("created_at",{ascending:false}),
+    db.from("rfqs").select("id,quantity,target_price,message,status,created_at,products(name)").order("created_at",{ascending:false})
+  ]);
+  if (products.error) throw new Error("Could not load products: " + products.error.message);
+  if (rfqs.error) throw new Error("Could not load your quotation requests: " + rfqs.error.message);
+  $("marketProducts").innerHTML = products.data.length ? products.data.map(p =>
+    '<div class="product"><h3>'+esc(p.name)+'</h3><p class="muted">'+esc(p.category)+' · '+esc(p.country)+' · MOQ '+esc(p.min_order_qty)+'</p><p>'+esc(p.description)+'</p><p><strong>'+(p.price ? esc(p.currency)+' '+esc(p.price)+' / unit' : 'Price on request')+'</strong></p><form class="rfqForm" data-product="'+esc(p.id)+'"><div class="formgrid"><div><label>Quantity</label><input name="quantity" type="number" min="1" required placeholder="Required quantity"></div><div><label>Target unit price (optional)</label><input name="target_price" type="number" min="0" step="0.01" placeholder="Your target price"></div></div><label>Message to seller</label><textarea name="message" maxlength="1000" placeholder="Share your specifications or delivery requirements"></textarea><button type="submit">Request a quote</button></form></div>'
+  ).join("") : '<div class="empty">No products have been listed yet. Please check again later.</div>';
+  $("buyerRfqs").innerHTML = rfqs.data.length ? rfqs.data.map(r =>
+    '<div class="product"><strong>'+esc(r.products?.name || "Product")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p></div>'
+  ).join("") : '<div class="empty">You have not sent any quotation requests yet.</div>';
+  document.querySelectorAll(".rfqForm").forEach(form => form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.currentTarget, fd = new FormData(f);
+    const qty = Number(fd.get("quantity")), target = fd.get("target_price");
+    const {error} = await db.from("rfqs").insert({product_id:f.dataset.product,buyer_id:currentUser.id,quantity:qty,target_price:target ? Number(target) : null,message:String(fd.get("message") || "").trim()});
+    if (error) { setStatus("Could not send request: " + error.message); return; }
+    setStatus("Your quotation request has been sent.");
+    await loadBuyerData();
+  }));
+}
+
+$("productForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = $("addProductBtn"); btn.disabled = true; setStatus("Publishing product…");
+  const price = $("productPrice").value;
+  const {error} = await db.from("products").insert({
+    seller_id:currentUser.id,name:$("productName").value.trim(),category:$("productCategory").value.trim(),
+    country:$("productCountry").value.trim(),description:$("productDescription").value.trim(),
+    min_order_qty:Number($("minQty").value),price:price ? Number(price) : null,currency:$("productCurrency").value
+  });
+  btn.disabled = false;
+  if (error) { setStatus("Could not publish product: " + error.message); return; }
+  $("productForm").reset(); $("minQty").value = 100; setStatus("Product published successfully.");
+  await loadSellerData();
+});
+
+async function start() {
+  const {data,error} = await db.auth.getSession();
+  if (error) throw error;
+  currentUser = data.session?.user;
+  if (!currentUser) { location.href = "./#account"; return; }
+  await loadProfile();
+}
+start().catch(err => { console.error(err); setStatus(err.message || "Dashboard could not load."); });
+</script>
+</body>
+</html>
