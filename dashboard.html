@@ -101,7 +101,7 @@ async function loadProfile() {
 async function loadSellerData() {
   const [products,rfqs] = await Promise.all([
     db.from("products").select("*").eq("seller_id",currentUser.id).order("created_at",{ascending:false}),
-    db.from("rfqs").select("id,quantity,target_price,message,status,created_at,products(name,currency)").order("created_at",{ascending:false})
+    db.from("rfqs").select("id,quantity,target_price,message,status,seller_reply,seller_replied_at,created_at,products(name,currency)").order("created_at",{ascending:false})
   ]);
   if (products.error) throw new Error("Products table is not ready: " + products.error.message);
   if (rfqs.error) throw new Error("Could not load buyer inquiries: " + rfqs.error.message);
@@ -117,8 +117,18 @@ async function loadSellerData() {
     await loadSellerData();
   }));
   $("sellerRfqs").innerHTML = rfqs.data.length ? rfqs.data.map(r =>
-    '<div class="product"><strong>'+esc(r.products?.name || "Product inquiry")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Buyer target price: '+(r.target_price !== null ? esc(r.products?.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p><p class="muted">'+new Date(r.created_at).toLocaleString()+'</p><label for="rfqStatus-'+esc(r.id)+'">Update inquiry status</label><select id="rfqStatus-'+esc(r.id)+'" class="rfqStatusSelect" data-id="'+esc(r.id)+'"><option value="new" '+(r.status === 'new' ? 'selected' : '')+'>New</option><option value="replied" '+(r.status === 'replied' ? 'selected' : '')+'>Replied</option><option value="closed" '+(r.status === 'closed' ? 'selected' : '')+'>Closed</option></select></div>'
+    '<div class="product"><strong>'+esc(r.products?.name || "Product inquiry")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Buyer target price: '+(r.target_price !== null ? esc(r.products?.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p><p class="muted">'+new Date(r.created_at).toLocaleString()+'</p><label for="sellerReply-'+esc(r.id)+'">Your reply to buyer</label><textarea id="sellerReply-'+esc(r.id)+'" class="sellerReplyInput" data-id="'+esc(r.id)+'" maxlength="2000" placeholder="Write price, delivery time, product details…">'+esc(r.seller_reply || '')+'</textarea><button type="button" class="saveSellerReplyBtn" data-id="'+esc(r.id)+'">Send reply to buyer</button>'+(r.seller_replied_at ? '<p class="muted">Last reply: '+new Date(r.seller_replied_at).toLocaleString()+'</p>' : '')+'<label for="rfqStatus-'+esc(r.id)+'">Update inquiry status</label><select id="rfqStatus-'+esc(r.id)+'" class="rfqStatusSelect" data-id="'+esc(r.id)+'"><option value="new" '+(r.status === 'new' ? 'selected' : '')+'>New</option><option value="replied" '+(r.status === 'replied' ? 'selected' : '')+'>Replied</option><option value="closed" '+(r.status === 'closed' ? 'selected' : '')+'>Closed</option></select></div>'
   ).join("") : '<div class="empty">No buyer inquiries yet. Publish products so buyers can contact you.</div>';
+  $("sellerRfqs").querySelectorAll(".saveSellerReplyBtn").forEach(button => button.addEventListener("click", async () => {
+    const replyBox = $("sellerReply-" + button.dataset.id);
+    const reply = replyBox.value.trim();
+    if (!reply) { setStatus("Please write a reply before sending."); replyBox.focus(); return; }
+    button.disabled = true;
+    const {error} = await db.from("rfqs").update({seller_reply:reply,seller_replied_at:new Date().toISOString(),status:"replied"}).eq("id",button.dataset.id);
+    if (error) { setStatus("Could not send seller reply: " + error.message); button.disabled = false; return; }
+    setStatus("Your reply has been sent to the buyer.");
+    await loadSellerData();
+  }));
   $("sellerRfqs").querySelectorAll(".rfqStatusSelect").forEach(select => select.addEventListener("change", async () => {
     select.disabled = true;
     const {error} = await db.from("rfqs").update({status:select.value}).eq("id",select.dataset.id);
@@ -131,7 +141,7 @@ async function loadSellerData() {
 async function loadBuyerData() {
   const [products,rfqs] = await Promise.all([
     db.from("products").select("id,seller_id,name,category,description,min_order_qty,price,currency,country").eq("status","active").order("created_at",{ascending:false}),
-    db.from("rfqs").select("id,quantity,target_price,message,status,created_at,products(name,currency)").order("created_at",{ascending:false})
+    db.from("rfqs").select("id,quantity,target_price,message,status,seller_reply,seller_replied_at,created_at,products(name,currency)").order("created_at",{ascending:false})
   ]);
   if (products.error) throw new Error("Could not load products: " + products.error.message);
   if (rfqs.error) throw new Error("Could not load your quotation requests: " + rfqs.error.message);
@@ -139,7 +149,7 @@ async function loadBuyerData() {
     '<div class="product" data-search="'+esc([p.name,p.category,p.description].join(" "))+'" data-country="'+esc(p.country)+'"><h3>'+esc(p.name)+'</h3><p class="muted">'+esc(p.category)+' · '+esc(p.country)+' · MOQ '+esc(p.min_order_qty)+'</p><p>'+esc(p.description)+'</p><p><strong>'+(p.price ? esc(p.currency)+' '+esc(p.price)+' / unit' : 'Price on request')+'</strong></p><form class="rfqForm" data-product="'+esc(p.id)+'"><div class="formgrid"><div><label>Quantity</label><input name="quantity" type="number" min="1" required placeholder="Required quantity"></div><div><label>Target unit price (optional)</label><input name="target_price" type="number" min="0" step="0.01" placeholder="Your target price"></div></div><label>Message to seller</label><textarea name="message" maxlength="1000" placeholder="Share your specifications or delivery requirements"></textarea><button type="submit">Request a quote</button></form></div>'
   ).join("") : '<div class="empty">No products have been listed yet. Please check again later.</div>';
   $("buyerRfqs").innerHTML = rfqs.data.length ? rfqs.data.map(r =>
-    '<div class="product"><strong>'+esc(r.products?.name || "Product")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Target price: '+(r.target_price !== null ? esc(r.products?.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p></div>'
+    '<div class="product"><strong>'+esc(r.products?.name || "Product")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Target price: '+(r.target_price !== null ? esc(r.products?.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p>'+(r.seller_reply ? '<div style="margin-top:12px;padding:13px;border-left:3px solid #1769aa;background:#eef6fc;border-radius:8px"><strong>Seller reply</strong><p>'+esc(r.seller_reply)+'</p>'+(r.seller_replied_at ? '<p class="muted">'+new Date(r.seller_replied_at).toLocaleString()+'</p>' : '')+'</div>' : '<p class="muted">Waiting for the seller\'s reply.</p>')+'</div>'
   ).join("") : '<div class="empty">You have not sent any quotation requests yet.</div>';
   const filterProducts = () => {
     const term = $("productSearch").value.trim().toLowerCase();
