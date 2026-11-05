@@ -87,11 +87,26 @@ async function loadSellerData() {
   if (products.error) throw new Error("Products table is not ready: " + products.error.message);
   if (rfqs.error) throw new Error("Could not load buyer inquiries: " + rfqs.error.message);
   $("sellerProducts").innerHTML = products.data.length ? products.data.map(p =>
-    '<div class="product"><strong>'+esc(p.name)+'</strong> <span class="pill">'+esc(p.status)+'</span><p class="muted">'+esc(p.category)+' · MOQ '+esc(p.min_order_qty)+' · '+esc(p.country)+'</p><p>'+esc(p.description)+'</p><p class="muted">'+(p.price ? esc(p.currency)+' '+esc(p.price) : 'Price on request')+'</p></div>'
+    '<div class="product"><strong>'+esc(p.name)+'</strong> <span class="pill">'+esc(p.status)+'</span><p class="muted">'+esc(p.category)+' · MOQ '+esc(p.min_order_qty)+' · '+esc(p.country)+'</p><p>'+esc(p.description)+'</p><p class="muted">'+(p.price ? esc(p.currency)+' '+esc(p.price) : 'Price on request')+'</p><button type="button" class="secondary productStatusBtn" data-id="'+esc(p.id)+'" data-status="'+esc(p.status)+'">'+(p.status === 'active' ? 'Pause listing' : 'Reactivate listing')+'</button></div>'
   ).join("") : '<div class="empty">You have not published any products yet.</div>';
+  $("sellerProducts").querySelectorAll(".productStatusBtn").forEach(button => button.addEventListener("click", async () => {
+    button.disabled = true;
+    const nextStatus = button.dataset.status === "active" ? "inactive" : "active";
+    const {error} = await db.from("products").update({status:nextStatus}).eq("id",button.dataset.id).eq("seller_id",currentUser.id);
+    if (error) { setStatus("Could not update listing: " + error.message); button.disabled = false; return; }
+    setStatus(nextStatus === "active" ? "Product listing is active again." : "Product listing paused. Buyers can no longer see it.");
+    await loadSellerData();
+  }));
   $("sellerRfqs").innerHTML = rfqs.data.length ? rfqs.data.map(r =>
-    '<div class="product"><strong>'+esc(r.products?.name || "Product inquiry")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p><p class="muted">'+new Date(r.created_at).toLocaleString()+'</p></div>'
+    '<div class="product"><strong>'+esc(r.products?.name || "Product inquiry")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p><p class="muted">'+new Date(r.created_at).toLocaleString()+'</p><label for="rfqStatus-'+esc(r.id)+'">Update inquiry status</label><select id="rfqStatus-'+esc(r.id)+'" class="rfqStatusSelect" data-id="'+esc(r.id)+'"><option value="new" '+(r.status === 'new' ? 'selected' : '')+'>New</option><option value="replied" '+(r.status === 'replied' ? 'selected' : '')+'>Replied</option><option value="closed" '+(r.status === 'closed' ? 'selected' : '')+'>Closed</option></select></div>'
   ).join("") : '<div class="empty">No buyer inquiries yet. Publish products so buyers can contact you.</div>';
+  $("sellerRfqs").querySelectorAll(".rfqStatusSelect").forEach(select => select.addEventListener("change", async () => {
+    select.disabled = true;
+    const {error} = await db.from("rfqs").update({status:select.value}).eq("id",select.dataset.id);
+    if (error) { setStatus("Could not update inquiry: " + error.message); select.disabled = false; return; }
+    setStatus("Buyer inquiry status updated.");
+    await loadSellerData();
+  }));
 }
 
 async function loadBuyerData() {
