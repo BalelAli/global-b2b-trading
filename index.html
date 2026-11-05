@@ -137,12 +137,15 @@ document.getElementById("signup").addEventListener("submit", async (event) => {
     const { data, error } = await db.auth.signUp({
       email: document.getElementById("signupEmail").value.trim(),
       password: document.getElementById("signupPassword").value,
-      options: { data: {
-        role: document.getElementById("role").value,
-        full_name: document.getElementById("fullName").value.trim(),
-        company_name: document.getElementById("company").value.trim(),
-        country: document.getElementById("country").value.trim()
-      }}
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname,
+        data: {
+          role: document.getElementById("role").value,
+          full_name: document.getElementById("fullName").value.trim(),
+          company_name: document.getElementById("company").value.trim(),
+          country: document.getElementById("country").value.trim()
+        }
+      }
     });
     if (error) throw error;
     showStatus(data.session ? "Account created. You are signed in." : "Account created. Please check your email to confirm it.");
