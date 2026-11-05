@@ -74,7 +74,14 @@ footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid va
           <label for="loginEmail">Email</label><input id="loginEmail" type="email" required autocomplete="email">
           <label for="loginPassword">Password</label><div style="display:flex;gap:8px;align-items:center"><input id="loginPassword" type="password" required autocomplete="current-password" style="flex:1;min-width:0"><button id="toggleLoginPassword" class="secondary" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
           <button id="loginButton" type="submit" style="margin-top:16px;width:100%">Sign in</button>
+          <button id="forgotPassword" class="secondary" type="button" style="margin-top:10px;width:100%">Forgot password?</button>
           <button id="resendConfirmation" class="secondary" type="button" style="margin-top:10px;width:100%">Resend confirmation email</button>
+        </form>
+        <form id="recoveryForm" style="display:none;margin-top:16px">
+          <h3>Set a new password</h3>
+          <label for="newPassword">New password</label>
+          <input id="newPassword" type="password" minlength="8" required autocomplete="new-password" placeholder="At least 8 characters">
+          <button type="submit" style="margin-top:12px;width:100%">Save new password</button>
         </form>
         <div id="status" role="status" aria-live="polite"></div>
         <p class="muted">Never share your password with anyone. Use an email address you can access.</p>
@@ -155,6 +162,58 @@ document.getElementById("signup").addEventListener("submit", async (event) => {
     showStatus(error.message || "Could not create the account. Please try again.");
   }
   finally { button.disabled = false; }
+});
+
+const recoveryForm = document.getElementById("recoveryForm");
+function showRecoveryForm() {
+  recoveryForm.style.display = "block";
+  document.getElementById("newPassword").focus();
+  showStatus("Enter a new password with at least 8 characters.");
+}
+db?.auth.onAuthStateChange((event) => {
+  if (event === "PASSWORD_RECOVERY") showRecoveryForm();
+});
+if (new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery") {
+  showRecoveryForm();
+}
+document.getElementById("forgotPassword").addEventListener("click", async () => {
+  if (!db) return showStatus("Password recovery is not available right now.");
+  const email = document.getElementById("loginEmail").value.trim();
+  if (!email) return showStatus("First enter your registered email address above.");
+  const button = document.getElementById("forgotPassword");
+  button.disabled = true;
+  showStatus("Sending password reset email…");
+  try {
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    if (error) throw error;
+    showStatus("Password reset email requested. Open the email and follow its link to set a new password.");
+  } catch (error) {
+    showStatus(error.message || "Could not send password reset email.");
+  } finally {
+    button.disabled = false;
+  }
+});
+recoveryForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const password = document.getElementById("newPassword").value;
+  if (password.length < 8) return showStatus("Use at least 8 characters for the new password.");
+  const button = recoveryForm.querySelector("button[type='submit']");
+  button.disabled = true;
+  showStatus("Saving your new password…");
+  try {
+    const { error } = await db.auth.updateUser({ password });
+    if (error) throw error;
+    recoveryForm.style.display = "none";
+    document.getElementById("newPassword").value = "";
+    showStatus("Password updated successfully. You can now sign in with your new password.");
+    await db.auth.signOut();
+  } catch (error) {
+    showStatus(error.message || "Could not update the password. Please open the reset link again.");
+  } finally {
+    button.disabled = false;
+  }
 });
 
 document.getElementById("resendConfirmation").addEventListener("click", async () => {
