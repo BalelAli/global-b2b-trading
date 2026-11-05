@@ -74,6 +74,7 @@ footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid va
           <label for="loginEmail">Email</label><input id="loginEmail" type="email" required autocomplete="email">
           <label for="loginPassword">Password</label><div style="display:flex;gap:8px;align-items:center"><input id="loginPassword" type="password" required autocomplete="current-password" style="flex:1;min-width:0"><button id="toggleLoginPassword" class="secondary" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
           <button id="loginButton" type="submit" style="margin-top:16px;width:100%">Sign in</button>
+          <button id="resendConfirmation" class="secondary" type="button" style="margin-top:10px;width:100%">Resend confirmation email</button>
         </form>
         <div id="status" role="status" aria-live="polite"></div>
         <p class="muted">Never share your password with anyone. Use an email address you can access.</p>
@@ -154,6 +155,25 @@ document.getElementById("signup").addEventListener("submit", async (event) => {
     showStatus(error.message || "Could not create the account. Please try again.");
   }
   finally { button.disabled = false; }
+});
+
+document.getElementById("resendConfirmation").addEventListener("click", async () => {
+  if (!db) return showStatus("Registration is not active yet.");
+  const email = document.getElementById("loginEmail").value.trim();
+  if (!email) return showStatus("Enter your registered email address first.");
+  const button = document.getElementById("resendConfirmation");
+  button.disabled = true; showStatus("Sending a new confirmation email…");
+  try {
+    const { error } = await db.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) throw error;
+    showStatus("A new confirmation email has been requested. Check your inbox and spam folder.");
+  } catch (error) {
+    showStatus(error.message || "Could not resend confirmation email.");
+  } finally { button.disabled = false; }
 });
 
 document.getElementById("login").addEventListener("submit", async (event) => {
