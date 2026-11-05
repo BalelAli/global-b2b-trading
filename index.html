@@ -62,7 +62,7 @@ footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid va
           <label for="company">Company name</label><input id="company" required maxlength="120" autocomplete="organization" placeholder="Your company">
           <label for="country">Country</label><input id="country" required maxlength="80" autocomplete="country-name" placeholder="Your country">
           <label for="signupEmail">Email</label><input id="signupEmail" type="email" required autocomplete="email" placeholder="you@example.com">
-          <label for="signupPassword">Password</label><input id="signupPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+          <label for="signupPassword">Password</label><div style="display:flex;gap:8px;align-items:center"><input id="signupPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" style="flex:1;min-width:0"><button id="toggleSignupPassword" class="secondary" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
           <button id="signupButton" type="submit" style="margin-top:16px;width:100%">Create account</button>
         </form>
         <div id="signupStatus" role="status" aria-live="polite" style="margin-top:12px;min-height:24px;font-weight:700;overflow-wrap:anywhere"></div>
@@ -105,6 +105,16 @@ try {
   console.error("Supabase initialization error:", initError);
   showStatus("Could not connect to the registration service. Please refresh and try again.");
 }
+
+const signupPasswordInput = document.getElementById("signupPassword");
+const toggleSignupPassword = document.getElementById("toggleSignupPassword");
+toggleSignupPassword.addEventListener("click", () => {
+  const showing = signupPasswordInput.type === "text";
+  signupPasswordInput.type = showing ? "password" : "text";
+  toggleSignupPassword.textContent = showing ? "Show" : "Hide";
+  toggleSignupPassword.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  toggleSignupPassword.setAttribute("aria-pressed", String(!showing));
+});
 
 document.getElementById("signup").addEventListener("submit", async (event) => {
   event.preventDefault();
