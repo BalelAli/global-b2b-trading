@@ -395,3 +395,60 @@ with check (
       )
   )
 );
+
+-- Secure administrator review for seller membership requests.
+-- The admin identity is checked from the verified Supabase Auth JWT email.
+drop policy if exists "Admin can view all seller membership requests" on public.seller_memberships;
+create policy "Admin can view all seller membership requests"
+on public.seller_memberships for select to authenticated
+using (lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com');
+
+create or replace function public.admin_review_seller_membership(
+  p_membership_id uuid,
+  p_approve boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_plan text;
+  v_status text;
+begin
+  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com' then
+    raise exception 'Not authorized to review memberships';
+  end if;
+
+  select sm.plan, sm.status
+    into v_plan, v_status
+  from public.seller_memberships sm
+  where sm.id = p_membership_id
+  for update;
+
+  if not found then
+    raise exception 'Membership request not found';
+  end if;
+  if v_status <> 'pending' then
+    raise exception 'Only pending membership requests can be reviewed';
+  end if;
+
+  if p_approve then
+    update public.seller_memberships
+    set status = 'active',
+        starts_at = now(),
+        expires_at = now() + case
+          when v_plan = 'monthly' then interval '1 month'
+          else interval '1 year'
+        end
+    where id = p_membership_id;
+  else
+    update public.seller_memberships
+    set status = 'rejected', starts_at = null, expires_at = null
+    where id = p_membership_id;
+  end if;
+end;
+$$;
+
+revoke all on function public.admin_review_seller_membership(uuid, boolean) from public;
+grant execute on function public.admin_review_seller_membership(uuid, boolean) to authenticated;
