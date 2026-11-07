@@ -102,3 +102,48 @@ with check (
 
 -- Only buyers may create RFQs; sellers cannot change the buyer_id or product_id
 -- through the dashboard UI. Row-level security still validates ownership.
+
+-- Private one-to-one conversation messages for each RFQ.
+-- Only the buyer who created the RFQ and the seller who owns its product
+-- can read or send messages in that RFQ conversation.
+create table if not exists public.rfq_messages (
+  id uuid primary key default gen_random_uuid(),
+  rfq_id uuid not null references public.rfqs(id) on delete cascade,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  message text not null check (char_length(trim(message)) between 1 and 2000),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists rfq_messages_rfq_created_idx
+on public.rfq_messages(rfq_id, created_at);
+
+alter table public.rfq_messages enable row level security;
+
+grant select, insert on public.rfq_messages to authenticated;
+
+drop policy if exists "RFQ participants can read their conversation" on public.rfq_messages;
+create policy "RFQ participants can read their conversation"
+on public.rfq_messages for select to authenticated
+using (
+  exists (
+    select 1
+    from public.rfqs r
+    join public.products p on p.id = r.product_id
+    where r.id = rfq_messages.rfq_id
+      and (r.buyer_id = auth.uid() or p.seller_id = auth.uid())
+  )
+);
+
+drop policy if exists "RFQ participants can send messages as themselves" on public.rfq_messages;
+create policy "RFQ participants can send messages as themselves"
+on public.rfq_messages for insert to authenticated
+with check (
+  sender_id = auth.uid()
+  and exists (
+    select 1
+    from public.rfqs r
+    join public.products p on p.id = r.product_id
+    where r.id = rfq_messages.rfq_id
+      and (r.buyer_id = auth.uid() or p.seller_id = auth.uid())
+  )
+);
