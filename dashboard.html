@@ -49,8 +49,8 @@ textarea{min-height:88px;resize:vertical}
       <p class="muted">View buyer requirements for free. An active membership is required to submit bids and contact buyers.</p>
       <div id="membershipStatus" class="product">Checking membership…</div>
       <div class="grid">
-        <div class="product"><h3>Monthly Membership</h3><p><strong style="font-size:25px;color:#102a43">$19</strong> / month</p><p class="muted">Bid on buyer requirements and privately message buyers while your membership is active.</p><button type="button" class="secondary chooseMembership" data-plan="monthly">Choose Monthly</button></div>
-        <div class="product"><h3>Yearly Membership</h3><p><strong style="font-size:25px;color:#102a43">$149</strong> / year</p><p class="muted">A full year of seller bidding and private buyer communication.</p><button type="button" class="secondary chooseMembership" data-plan="yearly">Choose Yearly</button></div>
+        <div class="product"><h3>Monthly Membership</h3><p><strong style="font-size:25px;color:#102a43">$10</strong> / month</p><p class="muted">Bid on buyer requirements and privately message buyers while your membership is active.</p><button type="button" class="secondary chooseMembership" data-plan="monthly">Choose Monthly</button></div>
+        <div class="product"><h3>Yearly Membership</h3><p><strong style="font-size:25px;color:#102a43">$100</strong> / year</p><p class="muted">A full year of seller bidding and private buyer communication.</p><button type="button" class="secondary chooseMembership" data-plan="yearly">Choose Yearly</button></div>
       </div>
       <form id="membershipPaymentForm" class="hidden">
         <h3 id="selectedMembershipTitle">Submit membership payment</h3>
@@ -135,14 +135,14 @@ async function loadSellerMembership() {
   $("membershipPaymentForm").classList.add("hidden");
   document.querySelectorAll(".chooseMembership").forEach(button=>button.addEventListener("click",()=>{
     $("membershipPlan").value=button.dataset.plan;
-    $("selectedMembershipTitle").textContent=button.dataset.plan==="monthly"?"Monthly Membership — $19":"Yearly Membership — $149";
+    $("selectedMembershipTitle").textContent=button.dataset.plan==="monthly"?"Monthly Membership — $10":"Yearly Membership — $100";
     $("membershipPaymentForm").classList.remove("hidden");
     $("membershipPaymentForm").scrollIntoView({behavior:"smooth",block:"center"});
   }));
   $("membershipPaymentForm").onsubmit=async e=>{
     e.preventDefault();const btn=$("membershipSubmitBtn");btn.disabled=true;
     const plan=$("membershipPlan").value;
-    const {error:insertError}=await db.from("seller_memberships").insert({seller_id:currentUser.id,plan,amount:plan==="monthly"?19:149,currency:"USD",payment_method:$("membershipMethod").value,payment_reference:$("membershipReference").value.trim(),status:"pending"});
+    const {error:insertError}=await db.from("seller_memberships").insert({seller_id:currentUser.id,plan,amount:plan==="monthly"?10:100,currency:"USD",payment_method:$("membershipMethod").value,payment_reference:$("membershipReference").value.trim(),status:"pending"});
     btn.disabled=false;
     if(insertError){setStatus("Could not submit membership payment: "+insertError.message);return;}
     $("membershipPaymentForm").reset();$("membershipPaymentForm").classList.add("hidden");
