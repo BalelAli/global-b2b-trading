@@ -147,3 +147,150 @@ with check (
       and (r.buyer_id = auth.uid() or p.seller_id = auth.uid())
   )
 );
+
+
+-- Open buyer requirements: visible to the requirement owner and all signed-in sellers.
+-- Bids are private: only the requirement owner and the bidding seller can read them.
+create or replace function public.is_current_user_seller()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'seller'
+  );
+$$;
+
+revoke all on function public.is_current_user_seller() from public;
+grant execute on function public.is_current_user_seller() to authenticated;
+
+create table if not exists public.buyer_requirements (
+  id uuid primary key default gen_random_uuid(),
+  buyer_id uuid not null references auth.users(id) on delete cascade,
+  title text not null check (char_length(trim(title)) between 3 and 160),
+  category text not null default '',
+  description text not null default '',
+  quantity integer not null check (quantity > 0),
+  target_price numeric(12,2),
+  currency text not null default 'USD',
+  destination_country text not null default '',
+  status text not null default 'open' check (status in ('open','closed')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists buyer_requirements_status_created_idx
+on public.buyer_requirements(status, created_at desc);
+create index if not exists buyer_requirements_buyer_idx
+on public.buyer_requirements(buyer_id);
+
+alter table public.buyer_requirements enable row level security;
+grant select, insert, update on public.buyer_requirements to authenticated;
+
+drop policy if exists "Buyer owners and all sellers can view open requirements" on public.buyer_requirements;
+create policy "Buyer owners and all sellers can view open requirements"
+on public.buyer_requirements for select to authenticated
+using (buyer_id = auth.uid() or (status = 'open' and public.is_current_user_seller()));
+
+drop policy if exists "Buyers can publish own requirements" on public.buyer_requirements;
+create policy "Buyers can publish own requirements"
+on public.buyer_requirements for insert to authenticated
+with check (buyer_id = auth.uid() and not public.is_current_user_seller());
+
+drop policy if exists "Buyers can update own requirements" on public.buyer_requirements;
+create policy "Buyers can update own requirements"
+on public.buyer_requirements for update to authenticated
+using (buyer_id = auth.uid() and not public.is_current_user_seller())
+with check (buyer_id = auth.uid() and not public.is_current_user_seller());
+
+create table if not exists public.requirement_bids (
+  id uuid primary key default gen_random_uuid(),
+  requirement_id uuid not null references public.buyer_requirements(id) on delete cascade,
+  seller_id uuid not null references auth.users(id) on delete cascade,
+  price numeric(12,2) not null check (price >= 0),
+  currency text not null default 'USD',
+  min_order_qty integer,
+  lead_time_days integer,
+  message text not null default '',
+  created_at timestamptz not null default now(),
+  unique(requirement_id, seller_id)
+);
+
+create index if not exists requirement_bids_requirement_idx
+on public.requirement_bids(requirement_id, created_at);
+
+alter table public.requirement_bids enable row level security;
+grant select, insert, update on public.requirement_bids to authenticated;
+
+drop policy if exists "Requirement owner and bidding seller can view bids" on public.requirement_bids;
+create policy "Requirement owner and bidding seller can view bids"
+on public.requirement_bids for select to authenticated
+using (
+  seller_id = auth.uid()
+  or exists (
+    select 1 from public.buyer_requirements br
+    where br.id = requirement_bids.requirement_id and br.buyer_id = auth.uid()
+  )
+);
+
+drop policy if exists "Sellers can bid on open requirements" on public.requirement_bids;
+create policy "Sellers can bid on open requirements"
+on public.requirement_bids for insert to authenticated
+with check (
+  seller_id = auth.uid()
+  and public.is_current_user_seller()
+  and exists (
+    select 1 from public.buyer_requirements br
+    where br.id = requirement_bids.requirement_id and br.status = 'open'
+  )
+);
+
+drop policy if exists "Sellers can update their own bids" on public.requirement_bids;
+create policy "Sellers can update their own bids"
+on public.requirement_bids for update to authenticated
+using (seller_id = auth.uid() and public.is_current_user_seller())
+with check (seller_id = auth.uid() and public.is_current_user_seller());
+
+-- Private messages for one buyer and one seller, scoped to their specific bid.
+create table if not exists public.bid_messages (
+  id uuid primary key default gen_random_uuid(),
+  bid_id uuid not null references public.requirement_bids(id) on delete cascade,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  message text not null check (char_length(trim(message)) between 1 and 2000),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists bid_messages_bid_created_idx
+on public.bid_messages(bid_id, created_at);
+
+alter table public.bid_messages enable row level security;
+grant select, insert on public.bid_messages to authenticated;
+
+drop policy if exists "Only bid participants can read bid messages" on public.bid_messages;
+create policy "Only bid participants can read bid messages"
+on public.bid_messages for select to authenticated
+using (
+  exists (
+    select 1
+    from public.requirement_bids b
+    join public.buyer_requirements br on br.id = b.requirement_id
+    where b.id = bid_messages.bid_id
+      and (br.buyer_id = auth.uid() or b.seller_id = auth.uid())
+  )
+);
+
+drop policy if exists "Only bid participants can send messages as themselves" on public.bid_messages;
+create policy "Only bid participants can send messages as themselves"
+on public.bid_messages for insert to authenticated
+with check (
+  sender_id = auth.uid()
+  and exists (
+    select 1
+    from public.requirement_bids b
+    join public.buyer_requirements br on br.id = b.requirement_id
+    where b.id = bid_messages.bid_id
+      and (br.buyer_id = auth.uid() or b.seller_id = auth.uid())
+  )
+);
