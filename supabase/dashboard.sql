@@ -333,8 +333,8 @@ with check (
   and starts_at is null
   and expires_at is null
   and (
-    (plan = 'monthly' and amount = 19.00)
-    or (plan = 'yearly' and amount = 149.00)
+    (plan = 'monthly' and amount = 10.00)
+    or (plan = 'yearly' and amount = 100.00)
   )
 );
 
