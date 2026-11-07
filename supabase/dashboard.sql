@@ -294,3 +294,86 @@ with check (
       and (br.buyer_id = auth.uid() or b.seller_id = auth.uid())
   )
 );
+
+
+-- Seller membership subscriptions. Sellers submit payment references;
+-- only a trusted administrator should activate membership status.
+create table if not exists public.seller_memberships (
+  id uuid primary key default gen_random_uuid(),
+  seller_id uuid not null references auth.users(id) on delete cascade,
+  plan text not null check (plan in ('monthly','yearly')),
+  amount numeric(10,2) not null check (amount > 0),
+  currency text not null default 'USD' check (currency = 'USD'),
+  payment_method text not null check (payment_method in ('bKash','Nagad','PayPal','Bank Transfer')),
+  payment_reference text not null check (char_length(trim(payment_reference)) between 3 and 160),
+  status text not null default 'pending' check (status in ('pending','active','rejected','expired')),
+  starts_at timestamptz,
+  expires_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists seller_memberships_seller_created_idx
+on public.seller_memberships(seller_id, created_at desc);
+
+alter table public.seller_memberships enable row level security;
+grant select, insert on public.seller_memberships to authenticated;
+
+drop policy if exists "Sellers can view their own membership records" on public.seller_memberships;
+create policy "Sellers can view their own membership records"
+on public.seller_memberships for select to authenticated
+using (seller_id = auth.uid());
+
+drop policy if exists "Sellers can submit their own membership payment" on public.seller_memberships;
+create policy "Sellers can submit their own membership payment"
+on public.seller_memberships for insert to authenticated
+with check (
+  seller_id = auth.uid()
+  and public.is_current_user_seller()
+  and status = 'pending'
+  and starts_at is null
+  and expires_at is null
+  and (
+    (plan = 'monthly' and amount = 19.00)
+    or (plan = 'yearly' and amount = 149.00)
+  )
+);
+
+create or replace function public.has_active_seller_membership()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.seller_memberships sm
+    where sm.seller_id = auth.uid()
+      and sm.status = 'active'
+      and sm.starts_at <= now()
+      and sm.expires_at > now()
+  );
+$$;
+
+revoke all on function public.has_active_seller_membership() from public;
+grant execute on function public.has_active_seller_membership() to authenticated;
+
+-- Require an active, unexpired membership before a seller can bid or update a bid.
+drop policy if exists "Sellers can bid on open requirements" on public.requirement_bids;
+create policy "Sellers can bid on open requirements"
+on public.requirement_bids for insert to authenticated
+with check (
+  seller_id = auth.uid()
+  and public.is_current_user_seller()
+  and public.has_active_seller_membership()
+  and exists (
+    select 1 from public.buyer_requirements br
+    where br.id = requirement_bids.requirement_id and br.status = 'open'
+  )
+);
+
+drop policy if exists "Sellers can update their own bids" on public.requirement_bids;
+create policy "Sellers can update their own bids"
+on public.requirement_bids for update to authenticated
+using (seller_id = auth.uid() and public.is_current_user_seller() and public.has_active_seller_membership())
+with check (seller_id = auth.uid() and public.is_current_user_seller() and public.has_active_seller_membership());
