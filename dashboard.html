@@ -43,6 +43,24 @@ textarea{min-height:88px;resize:vertical}
 <main>
   <div class="welcome"><h1 id="welcomeTitle">Your dashboard</h1><p id="welcomeSub">Loading your account…</p></div>
   <div id="pageStatus" class="status" role="status" aria-live="polite"></div>
+  <section id="sellerMembershipArea" class="hidden">
+    <article class="card">
+      <h2>Seller Membership</h2>
+      <p class="muted">View buyer requirements for free. An active membership is required to submit bids and contact buyers.</p>
+      <div id="membershipStatus" class="product">Checking membership…</div>
+      <div class="grid">
+        <div class="product"><h3>Monthly Membership</h3><p><strong style="font-size:25px;color:#102a43">$19</strong> / month</p><p class="muted">Bid on buyer requirements and privately message buyers while your membership is active.</p><button type="button" class="secondary chooseMembership" data-plan="monthly">Choose Monthly</button></div>
+        <div class="product"><h3>Yearly Membership</h3><p><strong style="font-size:25px;color:#102a43">$149</strong> / year</p><p class="muted">A full year of seller bidding and private buyer communication.</p><button type="button" class="secondary chooseMembership" data-plan="yearly">Choose Yearly</button></div>
+      </div>
+      <form id="membershipPaymentForm" class="hidden">
+        <h3 id="selectedMembershipTitle">Submit membership payment</h3>
+        <p class="muted">Make payment using the official payment instructions provided by Global B2B Trading support. Then submit your transaction/reference ID. Membership remains pending until the administrator verifies payment.</p>
+        <input type="hidden" id="membershipPlan">
+        <div class="formgrid"><div><label for="membershipMethod">Payment method</label><select id="membershipMethod" required><option value="bKash">bKash</option><option value="Nagad">Nagad</option><option value="PayPal">PayPal</option><option value="Bank Transfer">Bank Transfer</option></select></div><div><label for="membershipReference">Transaction / payment reference ID</label><input id="membershipReference" required maxlength="160" placeholder="Enter transaction ID"></div></div>
+        <button type="submit" id="membershipSubmitBtn">Submit for verification</button>
+      </form>
+    </article>
+  </section>
   <section id="sellerArea" class="hidden">
     <div class="grid">
       <article class="card">
@@ -75,7 +93,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
 const setStatus = (msg) => { $("pageStatus").textContent = msg || ""; };
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let currentUser = null, currentProfile = null;
+let currentUser = null, currentProfile = null, membershipActive = false;
 
 $("homeBtn").addEventListener("click", () => location.href = "./");
 $("logoutBtn").addEventListener("click", async () => {
@@ -93,6 +111,8 @@ async function loadProfile() {
   $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase();
   if (data.role === "seller") {
     $("sellerArea").classList.remove("hidden");
+    $("sellerMembershipArea").classList.remove("hidden");
+    await loadSellerMembership();
     await loadSellerData();
     await loadOpenRequirements();
   } else {
@@ -100,6 +120,35 @@ async function loadProfile() {
     await loadBuyerData();
     await loadMyRequirements();
   }
+}
+
+async function loadSellerMembership() {
+  const {data,error}=await db.from("seller_memberships").select("plan,amount,currency,payment_method,payment_reference,status,starts_at,expires_at,created_at").eq("seller_id",currentUser.id).order("created_at",{ascending:false}).limit(1);
+  if(error) throw new Error("Could not load seller membership: "+error.message);
+  const latest=data[0];
+  membershipActive=!!(latest && latest.status==="active" && latest.starts_at && latest.expires_at && new Date(latest.starts_at)<=new Date() && new Date(latest.expires_at)>new Date());
+  $("membershipStatus").innerHTML=membershipActive
+    ? '<span class="pill">ACTIVE MEMBERSHIP</span><p>Your '+esc(latest.plan)+' membership is active until '+new Date(latest.expires_at).toLocaleDateString()+'. You can submit bids.</p>'
+    : latest && latest.status==="pending"
+      ? '<span class="pill" style="background:#fff4d6;color:#815b00">PAYMENT UNDER REVIEW</span><p>Your '+esc(latest.plan)+' plan payment is awaiting administrator verification. Bid submission is locked until approval.</p>'
+      : '<span class="pill" style="background:#fcebea;color:#9b2c2c">NO ACTIVE MEMBERSHIP</span><p>You can browse requirements, but need an active plan to submit bids or message buyers.</p>';
+  $("membershipPaymentForm").classList.add("hidden");
+  document.querySelectorAll(".chooseMembership").forEach(button=>button.addEventListener("click",()=>{
+    $("membershipPlan").value=button.dataset.plan;
+    $("selectedMembershipTitle").textContent=button.dataset.plan==="monthly"?"Monthly Membership — $19":"Yearly Membership — $149";
+    $("membershipPaymentForm").classList.remove("hidden");
+    $("membershipPaymentForm").scrollIntoView({behavior:"smooth",block:"center"});
+  }));
+  $("membershipPaymentForm").onsubmit=async e=>{
+    e.preventDefault();const btn=$("membershipSubmitBtn");btn.disabled=true;
+    const plan=$("membershipPlan").value;
+    const {error:insertError}=await db.from("seller_memberships").insert({seller_id:currentUser.id,plan,amount:plan==="monthly"?19:149,currency:"USD",payment_method:$("membershipMethod").value,payment_reference:$("membershipReference").value.trim(),status:"pending"});
+    btn.disabled=false;
+    if(insertError){setStatus("Could not submit membership payment: "+insertError.message);return;}
+    $("membershipPaymentForm").reset();$("membershipPaymentForm").classList.add("hidden");
+    setStatus("Membership payment reference submitted. Your plan will activate after administrator verification.");
+    await loadSellerMembership();
+  };
 }
 
 async function loadSellerData() {
