@@ -59,12 +59,12 @@ textarea{min-height:88px;resize:vertical}
       <article class="card"><h2>My listed products</h2><div id="sellerProducts" class="muted">Loading…</div></article>
     </div>
     <article class="card"><h2>Buyer inquiries (RFQs)</h2><div id="sellerRfqs" class="muted">Loading…</div></article>
-    <article class="card"><h2>Open buyer requirements</h2><p class="muted">All active buyer requirements are visible to sellers. Submit your own quotation; only the buyer who posted it can see your bid.</p><div id="openRequirements">Loading…</div></article>
+    <article class="card"><h2>Buyer Requirement Directory</h2><p class="muted">Browse open demand by industry. Counts show unique buyers who have posted open requirements.</p><div id="requirementCategoryStats" class="grid"><div class="empty">Loading category totals…</div></div><label for="sellerRequirementCategory">Filter requirements by category</label><select id="sellerRequirementCategory"><option value="">All categories</option><option value="RMG & Textile">RMG & Textile</option><option value="Industrial & Machinery">Industrial & Machinery</option><option value="Electronics">Electronics</option><option value="Agriculture & Food">Agriculture & Food</option><option value="Leather & Footwear">Leather & Footwear</option><option value="Chemicals">Chemicals</option><option value="Construction">Construction</option><option value="Packaging">Packaging</option><option value="Home & Furniture">Home & Furniture</option><option value="Medical & Healthcare">Medical & Healthcare</option><option value="Automotive">Automotive</option><option value="Plastic & Rubber">Plastic & Rubber</option><option value="Other">Other</option></select></article><article class="card"><h2>Open buyer requirements</h2><p class="muted">All active buyer requirements are visible to sellers. Submit your own quotation; only the buyer who posted it can see your bid.</p><div id="openRequirements">Loading…</div></article>
   </section>
   <section id="buyerArea" class="hidden">
     <article class="card"><h2>Find products</h2><p class="muted">Browse active supplier listings and send a request for quotation.</p><div class="formgrid" style="margin:14px 0"><div><label for="productSearch">Search product or category</label><input id="productSearch" type="search" placeholder="e.g. cotton T-shirts"></div><div><label for="countryFilter">Supplier country</label><input id="countryFilter" type="search" placeholder="e.g. Bangladesh"></div></div><div id="marketProducts">Loading products…</div></article>
     <article class="card"><h2>My quotation requests</h2><div id="buyerRfqs">Loading…</div></article>
-    <article class="card"><h2>Post a requirement for all sellers</h2><p class="muted">Publish what you need. All sellers can view it and submit private bids. Only you can see the bids received.</p><form id="requirementForm"><label for="reqTitle">Product / requirement title</label><input id="reqTitle" required maxlength="160" placeholder="e.g. 1,000 cotton T-shirts"><div class="formgrid"><div><label for="reqCategory">Category</label><input id="reqCategory" maxlength="80" placeholder="Apparel"></div><div><label for="reqQty">Quantity</label><input id="reqQty" type="number" min="1" required placeholder="1000"></div></div><label for="reqDescription">Specifications / details</label><textarea id="reqDescription" maxlength="2000" placeholder="Material, sizes, quality, delivery details…"></textarea><div class="formgrid"><div><label for="reqTarget">Target unit price (optional)</label><input id="reqTarget" type="number" min="0" step="0.01" placeholder="0.95"></div><div><label for="reqCurrency">Currency</label><select id="reqCurrency"><option>USD</option><option>EUR</option><option>BDT</option><option>GBP</option></select></div></div><label for="reqDestination">Delivery country</label><input id="reqDestination" maxlength="80" placeholder="e.g. Bangladesh"><button type="submit" id="postRequirementBtn" style="margin-top:14px">Publish requirement to all sellers</button></form></article><article class="card"><h2>My posted requirements & seller bids</h2><div id="myRequirements">Loading…</div></article>
+    <article class="card"><h2>Post a requirement for all sellers</h2><p class="muted">Publish what you need. All sellers can view it and submit private bids. Only you can see the bids received.</p><form id="requirementForm"><label for="reqTitle">Product / requirement title</label><input id="reqTitle" required maxlength="160" placeholder="e.g. 1,000 cotton T-shirts"><div class="formgrid"><div><label for="reqCategory">Industry category</label><select id="reqCategory" required><option value="RMG & Textile">RMG & Textile</option><option value="Industrial & Machinery">Industrial & Machinery</option><option value="Electronics">Electronics</option><option value="Agriculture & Food">Agriculture & Food</option><option value="Leather & Footwear">Leather & Footwear</option><option value="Chemicals">Chemicals</option><option value="Construction">Construction</option><option value="Packaging">Packaging</option><option value="Home & Furniture">Home & Furniture</option><option value="Medical & Healthcare">Medical & Healthcare</option><option value="Automotive">Automotive</option><option value="Plastic & Rubber">Plastic & Rubber</option><option value="Other">Other</option></select></div><div><label for="reqQty">Quantity</label><input id="reqQty" type="number" min="1" required placeholder="1000"></div></div><label for="reqDescription">Specifications / details</label><textarea id="reqDescription" maxlength="2000" placeholder="Material, sizes, quality, delivery details…"></textarea><div class="formgrid"><div><label for="reqTarget">Target unit price (optional)</label><input id="reqTarget" type="number" min="0" step="0.01" placeholder="0.95"></div><div><label for="reqCurrency">Currency</label><select id="reqCurrency"><option>USD</option><option>EUR</option><option>BDT</option><option>GBP</option></select></div></div><label for="reqDestination">Delivery country</label><input id="reqDestination" maxlength="80" placeholder="e.g. Bangladesh"><button type="submit" id="postRequirementBtn" style="margin-top:14px">Publish requirement to all sellers</button></form></article><article class="card"><h2>My posted requirements & seller bids</h2><div id="myRequirements">Loading…</div></article>
   </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -193,19 +193,47 @@ $("productForm").addEventListener("submit", async e => {
 });
 
 
+const REQUIREMENT_CATEGORIES = ["RMG & Textile","Industrial & Machinery","Electronics","Agriculture & Food","Leather & Footwear","Chemicals","Construction","Packaging","Home & Furniture","Medical & Healthcare","Automotive","Plastic & Rubber","Other"];
+function requirementCategory(value) {
+  const v=String(value||"").toLowerCase();
+  if(/rmg|textile|apparel|garment|fabric|clothing/.test(v)) return "RMG & Textile";
+  if(/industrial|machin|equipment/.test(v)) return "Industrial & Machinery";
+  if(/electronic|computer|mobile/.test(v)) return "Electronics";
+  if(/agri|food|rice|seafood/.test(v)) return "Agriculture & Food";
+  if(/leather|footwear|shoe|bag/.test(v)) return "Leather & Footwear";
+  if(/chemical/.test(v)) return "Chemicals";
+  if(/construct|cement|steel|tile/.test(v)) return "Construction";
+  if(/packag|carton|label/.test(v)) return "Packaging";
+  if(/furniture|home/.test(v)) return "Home & Furniture";
+  if(/medical|health|hospital/.test(v)) return "Medical & Healthcare";
+  if(/automotive|vehicle|car part|tyre/.test(v)) return "Automotive";
+  if(/plastic|rubber/.test(v)) return "Plastic & Rubber";
+  return REQUIREMENT_CATEGORIES.includes(value) ? value : "Other";
+}
 async function loadOpenRequirements() {
   const {data,error}=await db.from("buyer_requirements").select("id,buyer_id,title,category,description,quantity,target_price,currency,destination_country,created_at").eq("status","open").order("created_at",{ascending:false});
   if(error) throw new Error("Could not load open buyer requirements: "+error.message);
+  const stats=REQUIREMENT_CATEGORIES.map(category=>{
+    const rows=data.filter(r=>requirementCategory(r.category)===category);
+    return {category,requirements:rows.length,buyers:new Set(rows.map(r=>r.buyer_id)).size};
+  });
+  $("requirementCategoryStats").innerHTML=stats.map(s=>'<div class="product"><strong>'+esc(s.category)+'</strong><p><b>'+s.buyers+'</b> buyer'+(s.buyers===1?"":"s")+'</p><p class="muted">'+s.requirements+' open requirement'+(s.requirements===1?"":"s")+'</p></div>').join("");
   for(const r of data){const {data:ownBid}=await db.from("requirement_bids").select("id,price,currency").eq("requirement_id",r.id).eq("seller_id",currentUser.id).maybeSingle();r.ownBid=ownBid;}
-  $("openRequirements").innerHTML=data.length?data.map(r=>'<div class="product"><h3>'+esc(r.title)+'</h3><p class="muted">'+esc(r.category||"General")+' · Quantity '+esc(r.quantity)+' · '+esc(r.currency)+'</p><p>'+esc(r.description||"No extra specifications")+'</p><p>Target price: '+(r.target_price!==null?esc(r.currency)+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p><p class="muted">Delivery: '+esc(r.destination_country||"To be discussed")+' · Posted '+new Date(r.created_at).toLocaleString()+'</p><form class="bidForm" data-requirement="'+esc(r.id)+'" data-currency="'+esc(r.currency)+'"><div class="formgrid"><div><label>Your unit price ('+esc(r.currency)+')</label><input name="price" type="number" min="0" step="0.01" required placeholder="Your offer"></div><div><label>Minimum order quantity (optional)</label><input name="min_order_qty" type="number" min="1" placeholder="MOQ"></div></div><div class="formgrid"><div><label>Lead time in days (optional)</label><input name="lead_time_days" type="number" min="1" placeholder="e.g. 20"></div><div><label>Message to buyer</label><input name="message" maxlength="1000" placeholder="Quality, terms, delivery…"></div></div><button type="submit">Submit bid</button></form>'+(r.ownBid?'<p class="muted">Your current bid: '+esc(r.ownBid.currency)+' '+esc(r.ownBid.price)+' / unit</p><div class="bidChat" data-bid-id="'+esc(r.ownBid.id)+'">Loading private conversation…</div>':'')+'</div>').join(""):'<div class="empty">No open buyer requirements at the moment.</div>';
-  await loadBidChats($("openRequirements"));
-  document.querySelectorAll(".bidForm").forEach(form=>form.addEventListener("submit",async e=>{
-    e.preventDefault();const fd=new FormData(form),btn=form.querySelector("button");btn.disabled=true;
-    const payload={requirement_id:form.dataset.requirement,seller_id:currentUser.id,price:Number(fd.get("price")),currency:form.dataset.currency,min_order_qty:fd.get("min_order_qty")?Number(fd.get("min_order_qty")):null,lead_time_days:fd.get("lead_time_days")?Number(fd.get("lead_time_days")):null,message:String(fd.get("message")||"").trim()};
-    const {error}=await db.from("requirement_bids").upsert(payload,{onConflict:"requirement_id,seller_id"});
-    if(error){setStatus("Could not submit bid: "+error.message);btn.disabled=false;return;}
-    setStatus("Your bid has been submitted. You can update it by submitting again.");await loadOpenRequirements();
-  }));
+  const renderRequirements=()=>{
+    const chosen=$("sellerRequirementCategory").value;
+    const rows=data.filter(r=>!chosen||requirementCategory(r.category)===chosen);
+    $("openRequirements").innerHTML=rows.length?rows.map(r=>'<div class="product" data-category="'+esc(requirementCategory(r.category))+'"><h3>'+esc(r.title)+'</h3><p class="muted">'+esc(requirementCategory(r.category))+' · Quantity '+esc(r.quantity)+' · '+esc(r.currency)+'</p><p>'+esc(r.description||"No extra specifications")+'</p><p>Target price: '+(r.target_price!==null?esc(r.currency)+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p><p class="muted">Delivery: '+esc(r.destination_country||"To be discussed")+' · Posted '+new Date(r.created_at).toLocaleString()+'</p><form class="bidForm" data-requirement="'+esc(r.id)+'" data-currency="'+esc(r.currency)+'"><div class="formgrid"><div><label>Your unit price ('+esc(r.currency)+')</label><input name="price" type="number" min="0" step="0.01" required placeholder="Your offer"></div><div><label>Minimum order quantity (optional)</label><input name="min_order_qty" type="number" min="1" placeholder="MOQ"></div></div><div class="formgrid"><div><label>Lead time in days (optional)</label><input name="lead_time_days" type="number" min="1" placeholder="e.g. 20"></div><div><label>Message to buyer</label><input name="message" maxlength="1000" placeholder="Quality, terms, delivery…"></div></div><button type="submit">Submit bid</button></form>'+(r.ownBid?'<p class="muted">Your current bid: '+esc(r.ownBid.currency)+' '+esc(r.ownBid.price)+' / unit</p><div class="bidChat" data-bid-id="'+esc(r.ownBid.id)+'">Loading private conversation…</div>':'')+'</div>').join(""):'<div class="empty">No open requirements in this category.</div>';
+    loadBidChats($("openRequirements"));
+    $("openRequirements").querySelectorAll(".bidForm").forEach(form=>form.addEventListener("submit",async e=>{
+      e.preventDefault();const fd=new FormData(form),btn=form.querySelector("button");btn.disabled=true;
+      const payload={requirement_id:form.dataset.requirement,seller_id:currentUser.id,price:Number(fd.get("price")),currency:form.dataset.currency,min_order_qty:fd.get("min_order_qty")?Number(fd.get("min_order_qty")):null,lead_time_days:fd.get("lead_time_days")?Number(fd.get("lead_time_days")):null,message:String(fd.get("message")||"").trim()};
+      const {error}=await db.from("requirement_bids").upsert(payload,{onConflict:"requirement_id,seller_id"});
+      if(error){setStatus("Could not submit bid: "+error.message);btn.disabled=false;return;}
+      setStatus("Your bid has been submitted. You can update it by submitting again.");await loadOpenRequirements();
+    }));
+  };
+  $("sellerRequirementCategory").onchange=renderRequirements;
+  renderRequirements();
 }
 
 
