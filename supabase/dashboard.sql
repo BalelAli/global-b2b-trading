@@ -377,3 +377,21 @@ create policy "Sellers can update their own bids"
 on public.requirement_bids for update to authenticated
 using (seller_id = auth.uid() and public.is_current_user_seller() and public.has_active_seller_membership())
 with check (seller_id = auth.uid() and public.is_current_user_seller() and public.has_active_seller_membership());
+
+-- Sellers must also have an active membership to send private bid messages.
+drop policy if exists "Only bid participants can send bid messages" on public.bid_messages;
+create policy "Only bid participants can send bid messages"
+on public.bid_messages for insert to authenticated
+with check (
+  sender_id = auth.uid()
+  and exists (
+    select 1
+    from public.requirement_bids b
+    join public.buyer_requirements br on br.id = b.requirement_id
+    where b.id = bid_messages.bid_id
+      and (
+        br.buyer_id = auth.uid()
+        or (b.seller_id = auth.uid() and public.has_active_seller_membership())
+      )
+  )
+);
