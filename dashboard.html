@@ -196,14 +196,31 @@ $("productForm").addEventListener("submit", async e => {
 async function loadOpenRequirements() {
   const {data,error}=await db.from("buyer_requirements").select("id,buyer_id,title,category,description,quantity,target_price,currency,destination_country,created_at").eq("status","open").order("created_at",{ascending:false});
   if(error) throw new Error("Could not load open buyer requirements: "+error.message);
-  $("openRequirements").innerHTML=data.length?data.map(r=>'<div class="product"><h3>'+esc(r.title)+'</h3><p class="muted">'+esc(r.category||"General")+' · Quantity '+esc(r.quantity)+' · '+esc(r.currency)+'</p><p>'+esc(r.description||"No extra specifications")+'</p><p>Target price: '+(r.target_price!==null?esc(r.currency)+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p><p class="muted">Delivery: '+esc(r.destination_country||"To be discussed")+' · Posted '+new Date(r.created_at).toLocaleString()+'</p><form class="bidForm" data-requirement="'+esc(r.id)+'"><div class="formgrid"><div><label>Your unit price ('+esc(r.currency)+')</label><input name="price" type="number" min="0" step="0.01" required placeholder="Your offer"></div><div><label>Minimum order quantity (optional)</label><input name="min_order_qty" type="number" min="1" placeholder="MOQ"></div></div><div class="formgrid"><div><label>Lead time in days (optional)</label><input name="lead_time_days" type="number" min="1" placeholder="e.g. 20"></div><div><label>Message to buyer</label><input name="message" maxlength="1000" placeholder="Quality, terms, delivery…"></div></div><button type="submit">Submit bid</button></form></div>').join(""):'<div class="empty">No open buyer requirements at the moment.</div>';
+  $("openRequirements").innerHTML=data.length?data.map(r=>'<div class="product"><h3>'+esc(r.title)+'</h3><p class="muted">'+esc(r.category||"General")+' · Quantity '+esc(r.quantity)+' · '+esc(r.currency)+'</p><p>'+esc(r.description||"No extra specifications")+'</p><p>Target price: '+(r.target_price!==null?esc(r.currency)+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p><p class="muted">Delivery: '+esc(r.destination_country||"To be discussed")+' · Posted '+new Date(r.created_at).toLocaleString()+'</p><form class="bidForm" data-requirement="'+esc(r.id)+'" data-currency="'+esc(r.currency)+'"><div class="formgrid"><div><label>Your unit price ('+esc(r.currency)+')</label><input name="price" type="number" min="0" step="0.01" required placeholder="Your offer"></div><div><label>Minimum order quantity (optional)</label><input name="min_order_qty" type="number" min="1" placeholder="MOQ"></div></div><div class="formgrid"><div><label>Lead time in days (optional)</label><input name="lead_time_days" type="number" min="1" placeholder="e.g. 20"></div><div><label>Message to buyer</label><input name="message" maxlength="1000" placeholder="Quality, terms, delivery…"></div></div><button type="submit">Submit bid</button></form></div>').join(""):'<div class="empty">No open buyer requirements at the moment.</div>';
   document.querySelectorAll(".bidForm").forEach(form=>form.addEventListener("submit",async e=>{
     e.preventDefault();const fd=new FormData(form),btn=form.querySelector("button");btn.disabled=true;
-    const payload={requirement_id:form.dataset.requirement,seller_id:currentUser.id,price:Number(fd.get("price")),currency:"USD",min_order_qty:fd.get("min_order_qty")?Number(fd.get("min_order_qty")):null,lead_time_days:fd.get("lead_time_days")?Number(fd.get("lead_time_days")):null,message:String(fd.get("message")||"").trim()};
+    const payload={requirement_id:form.dataset.requirement,seller_id:currentUser.id,price:Number(fd.get("price")),currency:form.dataset.currency,min_order_qty:fd.get("min_order_qty")?Number(fd.get("min_order_qty")):null,lead_time_days:fd.get("lead_time_days")?Number(fd.get("lead_time_days")):null,message:String(fd.get("message")||"").trim()};
     const {error}=await db.from("requirement_bids").upsert(payload,{onConflict:"requirement_id,seller_id"});
     if(error){setStatus("Could not submit bid: "+error.message);btn.disabled=false;return;}
     setStatus("Your bid has been submitted. You can update it by submitting again.");await loadOpenRequirements();
   }));
+}
+
+
+async function loadBidChats(root) {
+  const boxes=[...root.querySelectorAll(".bidChat")];
+  for(const box of boxes){
+    const bidId=box.dataset.bidId;
+    const {data,error}=await db.from("bid_messages").select("id,sender_id,message,created_at").eq("bid_id",bidId).order("created_at",{ascending:true});
+    if(error){box.textContent="Conversation unavailable: "+error.message;continue;}
+    box.innerHTML='<div style="background:#f5f9fc;border:1px solid #e1eaf2;border-radius:9px;padding:10px;max-height:220px;overflow:auto">'+(data.length?data.map(m=>'<p style="margin:5px 0"><b>'+(m.sender_id===currentUser.id?'You':'Other participant')+':</b> '+esc(m.message)+'<br><small class="muted">'+new Date(m.created_at).toLocaleString()+'</small></p>').join(""):'<p class="muted">No messages yet. Start a private conversation.</p>')+'</div><form class="bidMessageForm"><label>Private message</label><textarea name="message" maxlength="2000" required placeholder="Write a message…"></textarea><button type="submit">Send message</button></form>';
+    box.querySelector("form").addEventListener("submit",async e=>{
+      e.preventDefault();const form=e.currentTarget,btn=form.querySelector("button"),message=form.elements.message.value.trim();if(!message)return;btn.disabled=true;
+      const {error:sendError}=await db.from("bid_messages").insert({bid_id:bidId,sender_id:currentUser.id,message});
+      if(sendError){setStatus("Could not send message: "+sendError.message);btn.disabled=false;return;}
+      setStatus("Private message sent.");await loadBidChats(box.parentElement);
+    });
+  }
 }
 
 async function loadMyRequirements() {
@@ -214,10 +231,11 @@ async function loadMyRequirements() {
   for(const r of requirements){
     const {data:bids,error:bidError}=await db.from("requirement_bids").select("id,seller_id,price,currency,min_order_qty,lead_time_days,message,created_at").eq("requirement_id",r.id).order("created_at",{ascending:false});
     if(bidError) throw new Error("Could not load bids for your requirement: "+bidError.message);
-    const bidCards=bids.length?bids.map(b=>'<div class="product"><strong>Seller bid</strong><p><b>'+esc(b.currency)+' '+esc(b.price)+' / unit</b></p><p class="muted">Seller account: '+esc(b.seller_id.slice(0,8))+'… · '+new Date(b.created_at).toLocaleString()+'</p><p>MOQ: '+esc(b.min_order_qty||"Not specified")+' · Lead time: '+esc(b.lead_time_days?b.lead_time_days+" days":"Not specified")+'</p><p>'+esc(b.message||"No additional message")+'</p></div>').join(""):'<p class="muted">No seller bids yet.</p>';
+    const bidCards=bids.length?bids.map(b=>'<div class="product"><strong>Seller bid</strong><p><b>'+esc(b.currency)+' '+esc(b.price)+' / unit</b></p><p class="muted">Seller account: '+esc(b.seller_id.slice(0,8))+'… · '+new Date(b.created_at).toLocaleString()+'</p><p>MOQ: '+esc(b.min_order_qty||"Not specified")+' · Lead time: '+esc(b.lead_time_days?b.lead_time_days+" days":"Not specified")+'</p><p>'+esc(b.message||"No additional message")+'</p><div class="bidChat" data-bid-id="'+esc(b.id)+'">Loading private conversation…</div></div>').join(""):'<p class="muted">No seller bids yet.</p>';
     cards.push('<div class="product"><h3>'+esc(r.title)+'</h3><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p class="muted">'+bids.length+' seller'+(bids.length===1?"":"s")+' submitted bid'+(bids.length===1?"":"s")+'</p>'+bidCards+'</div>');
   }
   $("myRequirements").innerHTML=cards.join("");
+  await loadBidChats($("myRequirements"));
 }
 
 $("requirementForm").addEventListener("submit",async e=>{
