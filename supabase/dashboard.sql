@@ -53,6 +53,10 @@ create table if not exists public.rfqs (
   created_at timestamptz not null default now()
 );
 
+-- Dashboard reply fields used by seller and buyer views (also upgrades existing tables).
+alter table public.rfqs add column if not exists seller_reply text;
+alter table public.rfqs add column if not exists seller_replied_at timestamptz;
+
 create index if not exists rfqs_buyer_id_idx on public.rfqs(buyer_id);
 create index if not exists rfqs_product_id_idx on public.rfqs(product_id);
 
