@@ -360,6 +360,10 @@ async function start() {
   if (error) throw error;
   currentUser = data.session?.user;
   if (!currentUser) { location.href = "./#account"; return; }
+  if ((currentUser.email || "").toLowerCase() === "balelali953@gmail.com") {
+    $("adminMembershipArea").classList.remove("hidden");
+    await loadAdminMemberships();
+  }
   await loadProfile();
 }
 start().catch(err => { console.error(err); setStatus(err.message || "Dashboard could not load."); });
