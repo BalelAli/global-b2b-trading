@@ -87,6 +87,9 @@ textarea{min-height:88px;resize:vertical}
       <label for="adminUserStatus">Account status</label>
       <select id="adminUserStatus"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select>
       <div id="adminUsersList">Loading user accounts…</div>
+      <h3 style="margin-top:22px">Recent account status history</h3>
+      <p class="muted">Latest 20 suspension and reactivation changes.</p>
+      <div id="adminUserAuditList">Loading account history…</div>
     </article>
   </section>
   <section id="adminProductsArea" class="hidden">
@@ -178,7 +181,7 @@ async function loadProfile() {
     $("adminSellersArea").classList.remove("hidden");
     $("adminUsersArea").classList.remove("hidden");
     $("adminProductsArea").classList.remove("hidden");
-    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminProducts()]);
+    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminUserAudit(), loadAdminProducts()]);
     return;
   }
   if (data.role === "seller") {
@@ -332,6 +335,20 @@ async function loadAdminUsers() {
     await loadAdminUsers();
   };
   render();
+}
+
+
+async function loadAdminUserAudit() {
+  const root=$("adminUserAuditList");
+  root.textContent="Loading account history…";
+  const {data,error}=await db.rpc("admin_list_user_status_events");
+  if(error){root.textContent="Could not load account history: "+error.message;return;}
+  const events=data||[];
+  if(!events.length){root.innerHTML='<div class="empty">No account status changes have been recorded yet.</div>';return;}
+  root.innerHTML=events.map(event=>{
+    const suspended=event.new_status==="suspended";
+    return '<div class="product"><strong>'+esc(event.target_name||"User account")+'</strong> · '+esc(event.target_user_id)+'<p>'+esc(event.previous_status.toUpperCase())+' → <b>'+esc(event.new_status.toUpperCase())+'</b></p><p class="muted">Changed by '+esc(event.actor_email)+' · '+new Date(event.changed_at).toLocaleString()+'</p></div>';
+  }).join("");
 }
 
 async function loadAdminProducts() {
