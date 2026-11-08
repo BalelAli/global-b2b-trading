@@ -189,7 +189,7 @@ async function loadProfile() {
   }
   $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
   $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase();
-  if (data.role === "buyer" || data.role === "seller") { $("profileTools").classList.remove("hidden"); renderProfileAvatar(); }
+  if (data.role === "buyer" || data.role === "seller" || data.role === "admin") { $("profileTools").classList.remove("hidden"); renderProfileAvatar(); }
   if (data.role === "admin") {
     $("adminMembershipArea").classList.remove("hidden");
     $("adminRequirementsArea").classList.remove("hidden");
