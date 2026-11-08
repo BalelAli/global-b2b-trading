@@ -242,9 +242,7 @@ $("adminMembershipList").addEventListener("click",async e=>{
 async function loadAdminRequirements() {
   const root=$("adminRequirementsList");
   root.textContent="Loading buyer requirements…";
-  const {data,error}=await db.from("buyer_requirements")
-    .select("id,buyer_id,title,category,description,quantity,target_price,currency,destination_country,status,created_at")
-    .order("created_at",{ascending:false});
+  const {data,error}=await db.rpc("admin_list_requirements");
   if(error){root.textContent="Could not load buyer requirements: "+error.message;return;}
   const render=()=>{
     const term=$("adminReqSearch").value.trim().toLowerCase();
@@ -419,7 +417,7 @@ async function loadAdminRfqs() {
   const root=$("adminRfqList");
   root.textContent="Loading quotation requests…";
   const [rfqsResult,profilesResult]=await Promise.all([
-    db.from("rfqs").select("id,product_id,buyer_id,quantity,target_price,message,status,seller_reply,seller_replied_at,created_at,products(name,seller_id,currency)").order("created_at",{ascending:false}),
+    db.rpc("admin_list_rfqs"),
     db.from("profiles").select("id,role,full_name,company_name,country").in("role",["buyer","seller"])
   ]);
   if(rfqsResult.error){root.textContent="Could not load quotation requests: "+rfqsResult.error.message;return;}
@@ -433,8 +431,8 @@ async function loadAdminRfqs() {
     const status=$("adminRfqStatus").value;
     return requests.filter(r=>{
       const buyer=profileById.get(r.buyer_id)||{};
-      const seller=profileById.get(r.products?.seller_id)||{};
-      const hay=[r.products?.name,r.buyer_id,buyer.full_name,buyer.company_name,buyer.country,r.products?.seller_id,seller.full_name,seller.company_name,seller.country,r.message,r.seller_reply].join(" ").toLowerCase();
+      const seller=profileById.get(r.seller_id)||{};
+      const hay=[r.product_name,r.buyer_id,buyer.full_name,buyer.company_name,buyer.country,r.seller_id,seller.full_name,seller.company_name,seller.country,r.message,r.seller_reply].join(" ").toLowerCase();
       return (!status||r.status===status)&&(!term||hay.includes(term));
     });
   };
@@ -445,8 +443,8 @@ async function loadAdminRfqs() {
     const headers=["Request ID","Product ID","Product","Status","Quantity","Target price","Currency","Buyer name","Buyer company","Buyer country","Buyer account ID","Seller name","Seller company","Seller country","Seller account ID","Buyer request","Seller reply","Submitted at","Seller replied at"];
     const records=rows.map(r=>{
       const buyer=profileById.get(r.buyer_id)||{};
-      const seller=profileById.get(r.products?.seller_id)||{};
-      return [r.id,r.product_id,r.products?.name,r.status,r.quantity,r.target_price,r.products?.currency||"USD",buyer.full_name,buyer.company_name,buyer.country,r.buyer_id,seller.full_name,seller.company_name,seller.country,r.products?.seller_id,r.message,r.seller_reply,r.created_at,r.seller_replied_at];
+      const seller=profileById.get(r.seller_id)||{};
+      return [r.id,r.product_id,r.product_name,r.status,r.quantity,r.target_price,r.currency||"USD",buyer.full_name,buyer.company_name,buyer.country,r.buyer_id,seller.full_name,seller.company_name,seller.country,r.seller_id,r.message,r.seller_reply,r.created_at,r.seller_replied_at];
     });
     const csv="\uFEFF"+[headers,...records].map(row=>row.map(csvCell).join(",")).join("\r\n");
     const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
@@ -463,14 +461,14 @@ async function loadAdminRfqs() {
     if(!rows.length){root.innerHTML=summary+'<div class="empty">No quotation requests match these filters.</div>';return;}
     root.innerHTML=summary+rows.map(r=>{
       const buyer=profileById.get(r.buyer_id)||{};
-      const seller=profileById.get(r.products?.seller_id)||{};
+      const seller=profileById.get(r.seller_id)||{};
       const statusStyle=r.status==="closed"?'background:#eef2f6;color:#526477':r.status==="replied"?'':'background:#fff4d6;color:#805b00';
-      return '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(r.products?.name||"Product unavailable")+'</h3><span class="pill" style="'+statusStyle+'">'+esc(String(r.status||"unknown").toUpperCase())+'</span></div>'+
-        '<p><b>Quantity:</b> '+esc(r.quantity)+' · <b>Target price:</b> '+(r.target_price!==null?esc(r.products?.currency||"USD")+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p>'+
+      return '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(r.product_name||"Product unavailable")+'</h3><span class="pill" style="'+statusStyle+'">'+esc(String(r.status||"unknown").toUpperCase())+'</span></div>'+
+        '<p><b>Quantity:</b> '+esc(r.quantity)+' · <b>Target price:</b> '+(r.target_price!==null?esc(r.currency||"USD")+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p>'+
         '<p><b>Buyer:</b> '+esc(buyer.full_name||"Buyer profile unavailable")+' · '+esc(buyer.company_name||"Company not provided")+' · '+esc(buyer.country||"")+'</p>'+
         '<p><b>Seller:</b> '+esc(seller.full_name||"Seller profile unavailable")+' · '+esc(seller.company_name||"Company not provided")+' · '+esc(seller.country||"")+'</p>'+
         '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:750;color:#1769aa">View full RFQ details</summary>'+
-        '<p class="muted">Buyer account: '+esc(r.buyer_id)+'<br>Seller account: '+esc(r.products?.seller_id||"Unavailable")+'<br>Product ID: '+esc(r.product_id)+'<br>Request ID: '+esc(r.id)+'<br>Submitted: '+new Date(r.created_at).toLocaleString()+'</p>'+
+        '<p class="muted">Buyer account: '+esc(r.buyer_id)+'<br>Seller account: '+esc(r.seller_id||"Unavailable")+'<br>Product ID: '+esc(r.product_id)+'<br>Request ID: '+esc(r.id)+'<br>Submitted: '+new Date(r.created_at).toLocaleString()+'</p>'+
         '<p><b>Buyer request:</b> '+esc(r.message||"No additional message")+'</p>'+
         (r.seller_reply?'<div style="margin-top:10px;padding:12px;border-left:3px solid #1769aa;background:#eef6fc;border-radius:8px"><b>Seller reply recorded</b><p>'+esc(r.seller_reply)+'</p><p class="muted">'+(r.seller_replied_at?new Date(r.seller_replied_at).toLocaleString():"")+'</p></div>':'<p class="muted">No seller reply recorded yet.</p>')+
         '</details></div>';
@@ -529,7 +527,7 @@ async function loadSellerData() {
     await loadSellerData();
   }));
   $("sellerRfqs").innerHTML = rfqs.data.length ? rfqs.data.map(r =>
-    '<div class="product"><strong>'+esc(r.products?.name || "Product inquiry")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Buyer target price: '+(r.target_price !== null ? esc(r.products?.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p><p class="muted">'+new Date(r.created_at).toLocaleString()+'</p><label for="sellerReply-'+esc(r.id)+'">Your reply to buyer</label><textarea id="sellerReply-'+esc(r.id)+'" class="sellerReplyInput" data-id="'+esc(r.id)+'" maxlength="2000" placeholder="Write price, delivery time, product details…">'+esc(r.seller_reply || '')+'</textarea><button type="button" class="saveSellerReplyBtn" data-id="'+esc(r.id)+'">Send reply to buyer</button>'+(r.seller_replied_at ? '<p role="status" style="margin:10px 0;padding:10px 12px;border-radius:8px;background:#e8f5ef;color:#116443;font-weight:750">✓ Reply sent successfully · '+new Date(r.seller_replied_at).toLocaleString()+'</p>' : '')+'<label for="rfqStatus-'+esc(r.id)+'">Update inquiry status</label><select id="rfqStatus-'+esc(r.id)+'" class="rfqStatusSelect" data-id="'+esc(r.id)+'"><option value="new" '+(r.status === 'new' ? 'selected' : '')+'>New</option><option value="replied" '+(r.status === 'replied' ? 'selected' : '')+'>Replied</option><option value="closed" '+(r.status === 'closed' ? 'selected' : '')+'>Closed</option></select></div>'
+    '<div class="product"><strong>'+esc(r.product_name || "Product inquiry")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Buyer target price: '+(r.target_price !== null ? esc(r.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p><p class="muted">'+new Date(r.created_at).toLocaleString()+'</p><label for="sellerReply-'+esc(r.id)+'">Your reply to buyer</label><textarea id="sellerReply-'+esc(r.id)+'" class="sellerReplyInput" data-id="'+esc(r.id)+'" maxlength="2000" placeholder="Write price, delivery time, product details…">'+esc(r.seller_reply || '')+'</textarea><button type="button" class="saveSellerReplyBtn" data-id="'+esc(r.id)+'">Send reply to buyer</button>'+(r.seller_replied_at ? '<p role="status" style="margin:10px 0;padding:10px 12px;border-radius:8px;background:#e8f5ef;color:#116443;font-weight:750">✓ Reply sent successfully · '+new Date(r.seller_replied_at).toLocaleString()+'</p>' : '')+'<label for="rfqStatus-'+esc(r.id)+'">Update inquiry status</label><select id="rfqStatus-'+esc(r.id)+'" class="rfqStatusSelect" data-id="'+esc(r.id)+'"><option value="new" '+(r.status === 'new' ? 'selected' : '')+'>New</option><option value="replied" '+(r.status === 'replied' ? 'selected' : '')+'>Replied</option><option value="closed" '+(r.status === 'closed' ? 'selected' : '')+'>Closed</option></select></div>'
   ).join("") : '<div class="empty">No buyer inquiries yet. Publish products so buyers can contact you.</div>';
   $("sellerRfqs").querySelectorAll(".saveSellerReplyBtn").forEach(button => button.addEventListener("click", async () => {
     const replyBox = $("sellerReply-" + button.dataset.id);
@@ -561,7 +559,7 @@ async function loadBuyerData() {
     '<div class="product" data-search="'+esc([p.name,p.category,p.description].join(" "))+'" data-country="'+esc(p.country)+'"><h3>'+esc(p.name)+'</h3><p class="muted">'+esc(p.category)+' · '+esc(p.country)+' · MOQ '+esc(p.min_order_qty)+'</p><p>'+esc(p.description)+'</p><p><strong>'+(p.price ? esc(p.currency)+' '+esc(p.price)+' / unit' : 'Price on request')+'</strong></p><form class="rfqForm" data-product="'+esc(p.id)+'"><div class="formgrid"><div><label>Quantity</label><input name="quantity" type="number" min="1" required placeholder="Required quantity"></div><div><label>Target unit price (optional)</label><input name="target_price" type="number" min="0" step="0.01" placeholder="Your target price"></div></div><label>Message to seller</label><textarea name="message" maxlength="1000" placeholder="Share your specifications or delivery requirements"></textarea><button type="submit">Request a quote</button></form></div>'
   ).join("") : '<div class="empty">No products have been listed yet. Please check again later.</div>';
   $("buyerRfqs").innerHTML = rfqs.data.length ? rfqs.data.map(r =>
-    '<div class="product"><strong>'+esc(r.products?.name || "Product")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Target price: '+(r.target_price !== null ? esc(r.products?.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p>'+(r.seller_reply ? '<div style="margin-top:12px;padding:13px;border-left:3px solid #1769aa;background:#eef6fc;border-radius:8px"><strong>Seller reply</strong><p>'+esc(r.seller_reply)+'</p>'+(r.seller_replied_at ? '<p class="muted">'+new Date(r.seller_replied_at).toLocaleString()+'</p>' : '')+'</div>' : '<p class="muted">Waiting for the seller\'s reply.</p>')+'</div>'
+    '<div class="product"><strong>'+esc(r.product_name || "Product")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Target price: '+(r.target_price !== null ? esc(r.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p>'+(r.seller_reply ? '<div style="margin-top:12px;padding:13px;border-left:3px solid #1769aa;background:#eef6fc;border-radius:8px"><strong>Seller reply</strong><p>'+esc(r.seller_reply)+'</p>'+(r.seller_replied_at ? '<p class="muted">'+new Date(r.seller_replied_at).toLocaleString()+'</p>' : '')+'</div>' : '<p class="muted">Waiting for the seller\'s reply.</p>')+'</div>'
   ).join("") : '<div class="empty">You have not sent any quotation requests yet.</div>';
   const filterProducts = () => {
     const term = $("productSearch").value.trim().toLowerCase();
@@ -619,13 +617,13 @@ function requirementCategory(value) {
   return REQUIREMENT_CATEGORIES.includes(value) ? value : "Other";
 }
 async function loadOpenRequirements() {
-  const {data,error}=await db.from("buyer_requirements").select("id,buyer_id,title,category,description,quantity,target_price,currency,destination_country,created_at").eq("status","open").order("created_at",{ascending:false});
+  const {data,error}=await db.from("buyer_requirements").select("id,title,category,description,quantity,target_price,currency,destination_country,created_at").eq("status","open").order("created_at",{ascending:false});
   if(error) throw new Error("Could not load open buyer requirements: "+error.message);
   const stats=REQUIREMENT_CATEGORIES.map(category=>{
     const rows=data.filter(r=>requirementCategory(r.category)===category);
-    return {category,requirements:rows.length,buyers:new Set(rows.map(r=>r.buyer_id)).size};
+    return {category,requirements:rows.length};
   });
-  $("requirementCategoryStats").innerHTML=stats.map(s=>'<div class="product"><strong>'+esc(s.category)+'</strong><p><b>'+s.buyers+'</b> buyer'+(s.buyers===1?"":"s")+'</p><p class="muted">'+s.requirements+' open requirement'+(s.requirements===1?"":"s")+'</p></div>').join("");
+  $("requirementCategoryStats").innerHTML=stats.map(s=>'<div class="product"><strong>'+esc(s.category)+'</strong><p><b>'+s.requirements+'</b> open requirement'+(s.requirements===1?"":"s")+'</p></div>').join("");
   for(const r of data){const {data:ownBid}=await db.from("requirement_bids").select("id,price,currency").eq("requirement_id",r.id).eq("seller_id",currentUser.id).maybeSingle();r.ownBid=ownBid;}
   const renderRequirements=()=>{
     const chosen=$("sellerRequirementCategory").value;
@@ -662,7 +660,7 @@ async function loadBidChats(root) {
 }
 
 async function loadMyRequirements() {
-  const {data:requirements,error}=await db.from("buyer_requirements").select("*").eq("buyer_id",currentUser.id).order("created_at",{ascending:false});
+  const {data:requirements,error}=await db.from("buyer_requirements").select("id,title,category,description,quantity,target_price,currency,destination_country,status,created_at").order("created_at",{ascending:false});
   if(error) throw new Error("Could not load your posted requirements: "+error.message);
   if(!requirements.length){$("myRequirements").innerHTML='<div class="empty">You have not posted a requirement yet.</div>';return;}
   const cards=[];
