@@ -79,7 +79,7 @@ textarea{min-height:88px;resize:vertical}
   <section id="adminProductsArea" class="hidden">
     <article class="card">
       <h2>Admin — Seller Products Management</h2>
-      <p class="muted">Review every seller product, including inactive listings. This section is read-only; products and seller accounts are not changed.</p>
+      <p class="muted">Review every seller product, including inactive listings. Admin can deactivate or reactivate a listing; product details and seller accounts are not edited.</p>
       <div class="formgrid">
         <div><label for="adminProductSearch">Search products</label><input id="adminProductSearch" type="search" placeholder="Search product, category, seller, company…"></div>
         <div><label for="adminProductStatus">Product status</label><select id="adminProductStatus"><option value="">All product statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
@@ -300,11 +300,23 @@ async function loadAdminProducts() {
         '<p>'+esc(p.description||"No description provided")+'</p>'+
         '<p><b>Indicative price:</b> '+(p.price!==null?esc(p.currency)+' '+esc(p.price)+' / unit':"Price on request")+'</p>'+
         '<p><b>Seller:</b> '+esc(seller.full_name||"Seller profile unavailable")+' · '+esc(seller.company_name||"Company not provided")+' · '+esc(seller.country||"")+'</p>'+
-        '<p class="muted">Seller account: '+esc(p.seller_id)+'<br>Product ID: '+esc(p.id)+'<br>Listed: '+new Date(p.created_at).toLocaleString()+'</p></div>';
+        '<p class="muted">Seller account: '+esc(p.seller_id)+'<br>Product ID: '+esc(p.id)+'<br>Listed: '+new Date(p.created_at).toLocaleString()+'</p>'+
+        '<button type="button" class="'+(active?'secondary':'')+'" data-admin-product="'+esc(p.id)+'" data-next-status="'+(active?'inactive':'active')+'">'+(active?'Deactivate listing':'Reactivate listing')+'</button></div>';
     }).join("");
   };
   $("adminProductSearch").oninput=render;
   $("adminProductStatus").onchange=render;
+  root.onclick=async e=>{
+    const btn=e.target.closest("[data-admin-product]");
+    if(!btn)return;
+    const next=btn.dataset.nextStatus;
+    if(!confirm((next==="inactive"?"Deactivate":"Reactivate")+" this product listing? "+(next==="inactive"?"Buyers will no longer see it.":"It will become visible to buyers again.")))return;
+    btn.disabled=true;
+    const {error:updateError}=await db.rpc("admin_set_product_status",{p_product_id:btn.dataset.adminProduct,p_status:next});
+    if(updateError){setStatus("Could not update product status: "+updateError.message);btn.disabled=false;return;}
+    setStatus(next==="inactive"?"Product listing deactivated. Buyers can no longer see it.":"Product listing reactivated. Buyers can see it again.");
+    await loadAdminProducts();
+  };
   render();
 }
 
