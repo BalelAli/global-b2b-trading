@@ -50,6 +50,20 @@ textarea{min-height:88px;resize:vertical}
       <div id="adminMembershipList">Loading membership requests…</div>
     </article>
   </section>
+
+  <section id="adminRequirementsArea" class="hidden">
+    <article class="card">
+      <h2>Admin — Buyer Requirements Management</h2>
+      <p class="muted">View all buyer demand posts, search by title or destination, filter by industry/status, and close or reopen a post when needed.</p>
+      <div class="formgrid">
+        <div><label for="adminReqSearch">Search requirements</label><input id="adminReqSearch" type="search" placeholder="Search title, category, destination…"></div>
+        <div><label for="adminReqStatus">Status</label><select id="adminReqStatus"><option value="">All statuses</option><option value="open">Open</option><option value="closed">Closed</option></select></div>
+      </div>
+      <label for="adminReqCategory">Industry category</label>
+      <select id="adminReqCategory"><option value="">All categories</option><option>RMG & Textile</option><option>Industrial & Machinery</option><option>Electronics</option><option>Agriculture & Food</option><option>Leather & Footwear</option><option>Chemicals</option><option>Construction</option><option>Packaging</option><option>Home & Furniture</option><option>Medical & Healthcare</option><option>Automotive</option><option>Plastic & Rubber</option><option>Other</option></select>
+      <div id="adminRequirementsList">Loading buyer requirements…</div>
+    </article>
+  </section>
   <section id="sellerMembershipArea" class="hidden">
     <article class="card">
       <h2>Seller Membership</h2>
@@ -118,7 +132,8 @@ async function loadProfile() {
   $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase();
   if (data.role === "admin") {
     $("adminMembershipArea").classList.remove("hidden");
-    await loadAdminMemberships();
+    $("adminRequirementsArea").classList.remove("hidden");
+    await Promise.all([loadAdminMemberships(), loadAdminRequirements()]);
     return;
   }
   if (data.role === "seller") {
@@ -158,6 +173,43 @@ $("adminMembershipList").addEventListener("click",async e=>{
   setStatus(approve?"Payment approved. Seller membership is now active.":"Membership request rejected.");
   await loadAdminMemberships();
 });
+
+ 
+async function loadAdminRequirements() {
+  const root=$("adminRequirementsList");
+  root.textContent="Loading buyer requirements…";
+  const {data,error}=await db.from("buyer_requirements")
+    .select("id,buyer_id,title,category,description,quantity,target_price,currency,destination_country,status,created_at")
+    .order("created_at",{ascending:false});
+  if(error){root.textContent="Could not load buyer requirements: "+error.message;return;}
+  const render=()=>{
+    const term=$("adminReqSearch").value.trim().toLowerCase();
+    const status=$("adminReqStatus").value;
+    const category=$("adminReqCategory").value;
+    const rows=data.filter(r=>(!status||r.status===status)&&(!category||r.category===category)&&(!term||[r.title,r.category,r.description,r.destination_country,r.currency].join(" ").toLowerCase().includes(term)));
+    if(!rows.length){root.innerHTML='<div class="empty">No buyer requirements match these filters.</div>';return;}
+    root.innerHTML='<p class="muted">Showing '+rows.length+' of '+data.length+' requirements</p>'+rows.map(r=>
+      '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(r.title)+'</h3><span class="pill" style="'+(r.status==="open"?'':'background:#fcebea;color:#9b2c2c')+'">'+esc(r.status.toUpperCase())+'</span></div>'+
+      '<p class="muted">'+esc(r.category)+' · Quantity '+esc(r.quantity)+' · Destination '+esc(r.destination_country||"Not specified")+'</p>'+
+      '<p>'+esc(r.description||"No extra specifications")+'</p>'+
+      '<p><b>Target price:</b> '+(r.target_price!==null?esc(r.currency)+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p>'+
+      '<p class="muted">Buyer account: '+esc(r.buyer_id)+' · Posted '+new Date(r.created_at).toLocaleString()+'</p>'+
+      '<button type="button" class="'+(r.status==="open"?"secondary":"")+'" data-admin-req="'+esc(r.id)+'" data-next-status="'+(r.status==="open"?"closed":"open")+'">'+(r.status==="open"?"Close requirement":"Reopen requirement")+'</button></div>'
+    ).join("");
+  };
+  ["adminReqSearch","adminReqStatus","adminReqCategory"].forEach(id=>$(id).oninput=render);
+  root.onclick=async e=>{
+    const btn=e.target.closest("[data-admin-req]");if(!btn)return;
+    const next=btn.dataset.nextStatus;
+    if(!confirm((next==="closed"?"Close":"Reopen")+" this buyer requirement?"))return;
+    btn.disabled=true;
+    const {error:updateError}=await db.rpc("admin_set_requirement_status",{p_requirement_id:btn.dataset.adminReq,p_status:next});
+    if(updateError){setStatus("Could not update requirement: "+updateError.message);btn.disabled=false;return;}
+    setStatus("Buyer requirement status updated.");
+    await loadAdminRequirements();
+  };
+  render();
+}
 
 async function loadSellerMembership() {
   const {data,error}=await db.from("seller_memberships").select("plan,amount,currency,payment_method,payment_reference,status,starts_at,expires_at,created_at").eq("seller_id",currentUser.id).order("created_at",{ascending:false}).limit(1);
