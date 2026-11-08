@@ -103,6 +103,17 @@ textarea{min-height:88px;resize:vertical}
       <div id="adminProductsList">Loading seller products…</div>
     </article>
   </section>
+  <section id="adminRfqArea" class="hidden">
+    <article class="card">
+      <h2>Admin — RFQ & Quotation Management</h2>
+      <p class="muted">Monitor buyer quotation requests and seller reply status. Private RFQ chat messages are not shown here.</p>
+      <div class="formgrid">
+        <div><label for="adminRfqSearch">Search quotation requests</label><input id="adminRfqSearch" type="search" placeholder="Search product, buyer, seller, company, country…"></div>
+        <div><label for="adminRfqStatus">Request status</label><select id="adminRfqStatus"><option value="">All statuses</option><option value="new">New</option><option value="replied">Replied</option><option value="closed">Closed</option></select></div>
+      </div>
+      <div id="adminRfqList">Loading quotation requests…</div>
+    </article>
+  </section>
   <section id="sellerMembershipArea" class="hidden">
     <article class="card">
       <h2>Seller Membership</h2>
@@ -181,7 +192,8 @@ async function loadProfile() {
     $("adminSellersArea").classList.remove("hidden");
     $("adminUsersArea").classList.remove("hidden");
     $("adminProductsArea").classList.remove("hidden");
-    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminUserAudit(), loadAdminProducts()]);
+    $("adminRfqArea").classList.remove("hidden");
+    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminUserAudit(), loadAdminProducts(), loadAdminRfqs()]);
     return;
   }
   if (data.role === "seller") {
@@ -396,6 +408,49 @@ async function loadAdminProducts() {
     setStatus(next==="inactive"?"Product listing deactivated. Buyers can no longer see it.":"Product listing reactivated. Buyers can see it again.");
     await loadAdminProducts();
   };
+  render();
+}
+
+async function loadAdminRfqs() {
+  const root=$("adminRfqList");
+  root.textContent="Loading quotation requests…";
+  const [rfqsResult,profilesResult]=await Promise.all([
+    db.from("rfqs").select("id,product_id,buyer_id,quantity,target_price,message,status,seller_reply,seller_replied_at,created_at,products(name,seller_id,currency)").order("created_at",{ascending:false}),
+    db.from("profiles").select("id,role,full_name,company_name,country").in("role",["buyer","seller"])
+  ]);
+  if(rfqsResult.error){root.textContent="Could not load quotation requests: "+rfqsResult.error.message;return;}
+  if(profilesResult.error){root.textContent="Could not load buyer/seller details: "+profilesResult.error.message;return;}
+  const requests=rfqsResult.data||[];
+  const profileById=new Map((profilesResult.data||[]).map(p=>[p.id,p]));
+  const counts={new:0,replied:0,closed:0};
+  requests.forEach(r=>{if(Object.prototype.hasOwnProperty.call(counts,r.status))counts[r.status]++;});
+  const render=()=>{
+    const term=$("adminRfqSearch").value.trim().toLowerCase();
+    const status=$("adminRfqStatus").value;
+    const rows=requests.filter(r=>{
+      const buyer=profileById.get(r.buyer_id)||{};
+      const seller=profileById.get(r.products?.seller_id)||{};
+      const hay=[r.products?.name,r.buyer_id,buyer.full_name,buyer.company_name,buyer.country,r.products?.seller_id,seller.full_name,seller.company_name,seller.country,r.message,r.seller_reply].join(" ").toLowerCase();
+      return (!status||r.status===status)&&(!term||hay.includes(term));
+    });
+    const summary='<p class="muted">Total: '+requests.length+' · New: '+counts.new+' · Replied: '+counts.replied+' · Closed: '+counts.closed+' · Showing '+rows.length+'</p>';
+    if(!rows.length){root.innerHTML=summary+'<div class="empty">No quotation requests match these filters.</div>';return;}
+    root.innerHTML=summary+rows.map(r=>{
+      const buyer=profileById.get(r.buyer_id)||{};
+      const seller=profileById.get(r.products?.seller_id)||{};
+      const statusStyle=r.status==="closed"?'background:#eef2f6;color:#526477':r.status==="replied"?'':'background:#fff4d6;color:#805b00';
+      return '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(r.products?.name||"Product unavailable")+'</h3><span class="pill" style="'+statusStyle+'">'+esc(String(r.status||"unknown").toUpperCase())+'</span></div>'+
+        '<p><b>Quantity:</b> '+esc(r.quantity)+' · <b>Target price:</b> '+(r.target_price!==null?esc(r.products?.currency||"USD")+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p>'+
+        '<p><b>Buyer:</b> '+esc(buyer.full_name||"Buyer profile unavailable")+' · '+esc(buyer.company_name||"Company not provided")+' · '+esc(buyer.country||"")+'</p>'+
+        '<p><b>Seller:</b> '+esc(seller.full_name||"Seller profile unavailable")+' · '+esc(seller.company_name||"Company not provided")+' · '+esc(seller.country||"")+'</p>'+
+        '<p class="muted">Buyer account: '+esc(r.buyer_id)+'<br>Seller account: '+esc(r.products?.seller_id||"Unavailable")+'<br>Request ID: '+esc(r.id)+'<br>Submitted: '+new Date(r.created_at).toLocaleString()+'</p>'+
+        '<p><b>Buyer request:</b> '+esc(r.message||"No additional message")+'</p>'+
+        (r.seller_reply?'<div style="margin-top:10px;padding:12px;border-left:3px solid #1769aa;background:#eef6fc;border-radius:8px"><b>Seller reply recorded</b><p>'+esc(r.seller_reply)+'</p><p class="muted">'+(r.seller_replied_at?new Date(r.seller_replied_at).toLocaleString():"")+'</p></div>':'<p class="muted">No seller reply recorded yet.</p>')+
+        '</div>';
+    }).join("");
+  };
+  $("adminRfqSearch").oninput=render;
+  $("adminRfqStatus").onchange=render;
   render();
 }
 
