@@ -76,6 +76,19 @@ textarea{min-height:88px;resize:vertical}
       <div id="adminSellersList">Loading sellers…</div>
     </article>
   </section>
+  <section id="adminUsersArea" class="hidden">
+    <article class="card">
+      <h2>Admin — User Management</h2>
+      <p class="muted">View registered buyer and seller accounts. Suspending blocks access to the marketplace dashboard; accounts and their data are not deleted.</p>
+      <div class="formgrid">
+        <div><label for="adminUserSearch">Search users</label><input id="adminUserSearch" type="search" placeholder="Search name, company, country, email ID…"></div>
+        <div><label for="adminUserRole">Account type</label><select id="adminUserRole"><option value="">All users</option><option value="buyer">Buyers</option><option value="seller">Sellers</option></select></div>
+      </div>
+      <label for="adminUserStatus">Account status</label>
+      <select id="adminUserStatus"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select>
+      <div id="adminUsersList">Loading user accounts…</div>
+    </article>
+  </section>
   <section id="adminProductsArea" class="hidden">
     <article class="card">
       <h2>Admin — Seller Products Management</h2>
@@ -148,7 +161,7 @@ $("logoutBtn").addEventListener("click", async () => {
 });
 
 async function loadProfile() {
-  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country").eq("id",currentUser.id).single();
+  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status").eq("id",currentUser.id).single();
   if (error) throw new Error("Could not load your buyer/seller profile. Please check the profile table setup in Supabase. " + error.message);
   currentProfile = data;
   $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
@@ -158,7 +171,7 @@ async function loadProfile() {
     $("adminRequirementsArea").classList.remove("hidden");
     $("adminSellersArea").classList.remove("hidden");
     $("adminProductsArea").classList.remove("hidden");
-    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminProducts()]);
+    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminProducts()]);
     return;
   }
   if (data.role === "seller") {
@@ -269,6 +282,48 @@ async function loadAdminSellers() {
   };
   $("adminSellerSearch").oninput=render;
   $("adminSellerMembershipFilter").onchange=render;
+  render();
+}
+
+
+async function loadAdminUsers() {
+  const root=$("adminUsersList");
+  root.textContent="Loading user accounts…";
+  const {data:profiles,error}=await db.from("profiles")
+    .select("id,role,full_name,company_name,country,account_status,created_at")
+    .in("role",["buyer","seller"]).order("created_at",{ascending:false});
+  if(error){root.textContent="Could not load user accounts: "+error.message;return;}
+  const users=profiles||[];
+  const render=()=>{
+    const term=$("adminUserSearch").value.trim().toLowerCase();
+    const role=$("adminUserRole").value;
+    const status=$("adminUserStatus").value;
+    const rows=users.filter(p=>{
+      const state=p.account_status||"active";
+      const hay=[p.full_name,p.company_name,p.country,p.id,p.role].join(" ").toLowerCase();
+      return (!role||p.role===role)&&(!status||state===status)&&(!term||hay.includes(term));
+    });
+    if(!rows.length){root.innerHTML='<div class="empty">No user accounts match these filters.</div>';return;}
+    root.innerHTML='<p class="muted">Showing '+rows.length+' of '+users.length+' buyer and seller accounts</p>'+rows.map(p=>{
+      const state=p.account_status||"active",suspended=state==="suspended";
+      return '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(p.full_name||"Unnamed user")+'</h3><span class="pill" style="'+(suspended?'background:#fcebea;color:#9b2c2c':'')+'">'+esc(state.toUpperCase())+'</span></div><p><b>Account type:</b> '+esc(p.role.toUpperCase())+'</p><p><b>Company:</b> '+esc(p.company_name||"Not provided")+' · <b>Country:</b> '+esc(p.country||"Not provided")+'</p><p class="muted"><b>Account ID:</b> '+esc(p.id)+'<br>Registered: '+new Date(p.created_at).toLocaleString()+'</p><button type="button" class="'+(suspended?'':'secondary')+'" data-admin-user="'+esc(p.id)+'" data-next-user-status="'+(suspended?'active':'suspended')+'">'+(suspended?'Reactivate account':'Suspend account')+'</button></div>';
+    }).join("");
+  };
+  $("adminUserSearch").oninput=render;
+  $("adminUserRole").onchange=render;
+  $("adminUserStatus").onchange=render;
+  root.onclick=async e=>{
+    const btn=e.target.closest("[data-admin-user]");
+    if(!btn)return;
+    const next=btn.dataset.nextUserStatus;
+    const action=next==="suspended"?"Suspend":"Reactivate";
+    if(!confirm(action+" this "+(next==="suspended"?"user":"user account")+"? "+(next==="suspended"?"They will be signed out and blocked from the marketplace dashboard.":"They will be able to access the marketplace dashboard again.")))return;
+    btn.disabled=true;
+    const {error:updateError}=await db.rpc("admin_set_user_status",{p_user_id:btn.dataset.adminUser,p_status:next});
+    if(updateError){setStatus("Could not update user account: "+updateError.message);btn.disabled=false;return;}
+    setStatus(next==="suspended"?"User account suspended.":"User account reactivated.");
+    await loadAdminUsers();
+  };
   render();
 }
 
