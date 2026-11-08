@@ -76,6 +76,17 @@ textarea{min-height:88px;resize:vertical}
       <div id="adminSellersList">Loading sellers…</div>
     </article>
   </section>
+  <section id="adminProductsArea" class="hidden">
+    <article class="card">
+      <h2>Admin — Seller Products Management</h2>
+      <p class="muted">Review every seller product, including inactive listings. This section is read-only; products and seller accounts are not changed.</p>
+      <div class="formgrid">
+        <div><label for="adminProductSearch">Search products</label><input id="adminProductSearch" type="search" placeholder="Search product, category, seller, company…"></div>
+        <div><label for="adminProductStatus">Product status</label><select id="adminProductStatus"><option value="">All product statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+      </div>
+      <div id="adminProductsList">Loading seller products…</div>
+    </article>
+  </section>
   <section id="sellerMembershipArea" class="hidden">
     <article class="card">
       <h2>Seller Membership</h2>
@@ -146,7 +157,8 @@ async function loadProfile() {
     $("adminMembershipArea").classList.remove("hidden");
     $("adminRequirementsArea").classList.remove("hidden");
     $("adminSellersArea").classList.remove("hidden");
-    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers()]);
+    $("adminProductsArea").classList.remove("hidden");
+    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminProducts()]);
     return;
   }
   if (data.role === "seller") {
@@ -257,6 +269,42 @@ async function loadAdminSellers() {
   };
   $("adminSellerSearch").oninput=render;
   $("adminSellerMembershipFilter").onchange=render;
+  render();
+}
+
+async function loadAdminProducts() {
+  const root=$("adminProductsList");
+  root.textContent="Loading seller products…";
+  const [productsResult,profilesResult]=await Promise.all([
+    db.from("products").select("id,seller_id,name,category,description,min_order_qty,price,currency,country,status,created_at").order("created_at",{ascending:false}),
+    db.from("profiles").select("id,full_name,company_name,country").eq("role","seller")
+  ]);
+  if(productsResult.error){root.textContent="Could not load seller products: "+productsResult.error.message;return;}
+  if(profilesResult.error){root.textContent="Could not load seller details: "+profilesResult.error.message;return;}
+  const products=productsResult.data||[];
+  const sellerById=new Map((profilesResult.data||[]).map(p=>[p.id,p]));
+  const render=()=>{
+    const term=$("adminProductSearch").value.trim().toLowerCase();
+    const status=$("adminProductStatus").value;
+    const rows=products.filter(p=>{
+      const seller=sellerById.get(p.seller_id)||{};
+      const hay=[p.name,p.category,p.description,p.country,p.seller_id,seller.full_name,seller.company_name,seller.country].join(" ").toLowerCase();
+      return (!status||p.status===status)&&(!term||hay.includes(term));
+    });
+    if(!rows.length){root.innerHTML='<div class="empty">No seller products match these filters.</div>';return;}
+    root.innerHTML='<p class="muted">Showing '+rows.length+' of '+products.length+' products</p>'+rows.map(p=>{
+      const seller=sellerById.get(p.seller_id)||{};
+      const active=p.status==="active";
+      return '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(p.name)+'</h3><span class="pill" style="'+(active?'':'background:#fcebea;color:#9b2c2c')+'">'+esc(String(p.status||"unknown").toUpperCase())+'</span></div>'+
+        '<p class="muted">'+esc(p.category)+' · Origin: '+esc(p.country||"Not specified")+' · MOQ: '+esc(p.min_order_qty)+'</p>'+
+        '<p>'+esc(p.description||"No description provided")+'</p>'+
+        '<p><b>Indicative price:</b> '+(p.price!==null?esc(p.currency)+' '+esc(p.price)+' / unit':"Price on request")+'</p>'+
+        '<p><b>Seller:</b> '+esc(seller.full_name||"Seller profile unavailable")+' · '+esc(seller.company_name||"Company not provided")+' · '+esc(seller.country||"")+'</p>'+
+        '<p class="muted">Seller account: '+esc(p.seller_id)+'<br>Product ID: '+esc(p.id)+'<br>Listed: '+new Date(p.created_at).toLocaleString()+'</p></div>';
+    }).join("");
+  };
+  $("adminProductSearch").oninput=render;
+  $("adminProductStatus").onchange=render;
   render();
 }
 
