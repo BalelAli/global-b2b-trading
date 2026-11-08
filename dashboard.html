@@ -164,12 +164,19 @@ async function loadProfile() {
   const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status").eq("id",currentUser.id).single();
   if (error) throw new Error("Could not load your buyer/seller profile. Please check the profile table setup in Supabase. " + error.message);
   currentProfile = data;
+  if (data.role !== "admin" && data.account_status === "suspended") {
+    setStatus("This account has been suspended by the marketplace administrator. Please contact support.");
+    await db.auth.signOut();
+    location.href = "./#account";
+    return;
+  }
   $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
   $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase();
   if (data.role === "admin") {
     $("adminMembershipArea").classList.remove("hidden");
     $("adminRequirementsArea").classList.remove("hidden");
     $("adminSellersArea").classList.remove("hidden");
+    $("adminUsersArea").classList.remove("hidden");
     $("adminProductsArea").classList.remove("hidden");
     await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminProducts()]);
     return;
