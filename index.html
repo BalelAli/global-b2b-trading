@@ -74,6 +74,7 @@ footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid va
           <label for="loginEmail">Email</label><input id="loginEmail" type="email" required autocomplete="email">
           <label for="loginPassword">Password</label><div style="display:flex;gap:8px;align-items:center"><input id="loginPassword" type="password" required autocomplete="current-password" style="flex:1;min-width:0"><button id="toggleLoginPassword" class="secondary" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
           <button id="loginButton" type="submit" style="margin-top:16px;width:100%">Sign in</button>
+          <button id="googleLoginButton" class="secondary" type="button" style="margin-top:10px;width:100%">Continue with Google</button>
           <button id="forgotPassword" class="secondary" type="button" style="margin-top:10px;width:100%">Forgot password?</button>
           <button id="resendConfirmation" class="secondary" type="button" style="margin-top:10px;width:100%">Resend confirmation email</button>
         </form>
@@ -233,6 +234,15 @@ document.getElementById("resendConfirmation").addEventListener("click", async ()
   } catch (error) {
     showStatus(error.message || "Could not resend confirmation email.");
   } finally { button.disabled = false; }
+});
+
+document.getElementById("googleLoginButton").addEventListener("click", async () => {
+  if (!db) return showStatus("Google sign in is not available right now.");
+  const button=document.getElementById("googleLoginButton");button.disabled=true;showStatus("Connecting to Google…");
+  try {
+    const {error}=await db.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin+window.location.pathname.replace(/[^/]*$/,"dashboard.html"),queryParams:{access_type:"offline",prompt:"select_account"},data:{role:document.getElementById("role").value,full_name:document.getElementById("fullName").value.trim(),company_name:document.getElementById("company").value.trim(),country:document.getElementById("country").value.trim()}}});
+    if(error)throw error;
+  } catch(error){showStatus(error.message||"Google sign in failed. Please try again.");button.disabled=false;}
 });
 
 document.getElementById("login").addEventListener("submit", async (event) => {
