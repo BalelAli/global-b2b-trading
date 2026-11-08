@@ -116,16 +116,23 @@ async function loadProfile() {
   currentProfile = data;
   $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
   $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase();
+  if (data.role === "admin") {
+    $("adminMembershipArea").classList.remove("hidden");
+    await loadAdminMemberships();
+    return;
+  }
   if (data.role === "seller") {
     $("sellerArea").classList.remove("hidden");
     $("sellerMembershipArea").classList.remove("hidden");
     await loadSellerMembership();
     await loadSellerData();
     await loadOpenRequirements();
-  } else {
+  } else if (data.role === "buyer") {
     $("buyerArea").classList.remove("hidden");
     await loadBuyerData();
     await loadMyRequirements();
+  } else {
+    throw new Error("This account has an unsupported marketplace role.");
   }
 }
 
@@ -360,10 +367,6 @@ async function start() {
   if (error) throw error;
   currentUser = data.session?.user;
   if (!currentUser) { location.href = "./#account"; return; }
-  if ((currentUser.email || "").toLowerCase() === "balelali953@gmail.com") {
-    $("adminMembershipArea").classList.remove("hidden");
-    await loadAdminMemberships();
-  }
   await loadProfile();
 }
 start().catch(err => { console.error(err); setStatus(err.message || "Dashboard could not load."); });
