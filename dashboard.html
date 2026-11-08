@@ -64,6 +64,18 @@ textarea{min-height:88px;resize:vertical}
       <div id="adminRequirementsList">Loading buyer requirements…</div>
     </article>
   </section>
+
+  <section id="adminSellersArea" class="hidden">
+    <article class="card">
+      <h2>Admin — Seller Management</h2>
+      <p class="muted">View registered seller accounts and their latest membership status. This section is read-only for now; existing seller accounts and payments are not changed.</p>
+      <div class="formgrid">
+        <div><label for="adminSellerSearch">Search sellers</label><input id="adminSellerSearch" type="search" placeholder="Search name, company, country…"></div>
+        <div><label for="adminSellerMembershipFilter">Membership status</label><select id="adminSellerMembershipFilter"><option value="">All membership statuses</option><option value="active">Active</option><option value="pending">Pending</option><option value="rejected">Rejected</option><option value="expired">Expired</option><option value="none">No membership request</option></select></div>
+      </div>
+      <div id="adminSellersList">Loading sellers…</div>
+    </article>
+  </section>
   <section id="sellerMembershipArea" class="hidden">
     <article class="card">
       <h2>Seller Membership</h2>
@@ -133,7 +145,8 @@ async function loadProfile() {
   if (data.role === "admin") {
     $("adminMembershipArea").classList.remove("hidden");
     $("adminRequirementsArea").classList.remove("hidden");
-    await Promise.all([loadAdminMemberships(), loadAdminRequirements()]);
+    $("adminSellersArea").classList.remove("hidden");
+    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers()]);
     return;
   }
   if (data.role === "seller") {
@@ -208,6 +221,42 @@ async function loadAdminRequirements() {
     setStatus("Buyer requirement status updated.");
     await loadAdminRequirements();
   };
+  render();
+}
+
+
+async function loadAdminSellers() {
+  const root=$("adminSellersList");
+  root.textContent="Loading sellers…";
+  const [profilesResult,membershipsResult]=await Promise.all([
+    db.from("profiles").select("id,full_name,company_name,country,created_at").eq("role","seller").order("created_at",{ascending:false}),
+    db.from("seller_memberships").select("id,seller_id,plan,amount,currency,status,starts_at,expires_at,created_at").order("created_at",{ascending:false})
+  ]);
+  if(profilesResult.error){root.textContent="Could not load sellers: "+profilesResult.error.message;return;}
+  if(membershipsResult.error){root.textContent="Could not load seller membership details: "+membershipsResult.error.message;return;}
+  const profiles=profilesResult.data||[];
+  const memberships=membershipsResult.data||[];
+  const latestBySeller=new Map();
+  memberships.forEach(m=>{if(!latestBySeller.has(m.seller_id))latestBySeller.set(m.seller_id,m);});
+  const render=()=>{
+    const term=$("adminSellerSearch").value.trim().toLowerCase();
+    const filter=$("adminSellerMembershipFilter").value;
+    const rows=profiles.map(p=>({profile:p,membership:latestBySeller.get(p.id)||null})).filter(x=>{
+      const m=x.membership;
+      const status=m?m.status:"none";
+      const hay=[x.profile.full_name,x.profile.company_name,x.profile.country,x.profile.id,m?.plan].join(" ").toLowerCase();
+      return (!filter||status===filter)&&(!term||hay.includes(term));
+    });
+    if(!rows.length){root.innerHTML='<div class="empty">No sellers match these filters.</div>';return;}
+    root.innerHTML='<p class="muted">Showing '+rows.length+' of '+profiles.length+' seller accounts</p>'+rows.map(x=>{
+      const p=x.profile,m=x.membership,status=m?m.status:"none";
+      const label=m?status.toUpperCase().replace("_"," "):"NO MEMBERSHIP";
+      const pillStyle=status==="active"?'':status==="pending"?'background:#fff4d6;color:#805b00':'background:#eef2f6;color:#526477';
+      return '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(p.full_name||"Unnamed seller")+'</h3><span class="pill" style="'+pillStyle+'">'+esc(label)+'</span></div><p><b>Company:</b> '+esc(p.company_name||"Not provided")+'</p><p><b>Country:</b> '+esc(p.country||"Not provided")+'</p><p class="muted"><b>Seller account ID:</b> '+esc(p.id)+'</p><p class="muted">Registered: '+new Date(p.created_at).toLocaleString()+'</p>'+(m?'<p><b>Latest membership:</b> '+esc(m.plan)+' · '+esc(m.amount)+' '+esc(m.currency)+'</p><p class="muted">Request date: '+new Date(m.created_at).toLocaleString()+(m.expires_at?' · Expires: '+new Date(m.expires_at).toLocaleDateString():"")+'</p>':'<p class="muted">This seller has not submitted a membership request.</p>')+'</div>';
+    }).join("");
+  };
+  $("adminSellerSearch").oninput=render;
+  $("adminSellerMembershipFilter").onchange=render;
   render();
 }
 
