@@ -18,7 +18,7 @@ button:disabled{opacity:.6;cursor:wait;transform:none}
 main{max-width:1160px;margin:30px auto;padding:0 20px 45px}
 .welcome{position:relative;overflow:hidden;background:linear-gradient(115deg,#0b2239 0%,#123f67 56%,#1679b7 100%);color:#fff;border-radius:18px;padding:30px 32px;margin-bottom:24px;box-shadow:0 16px 34px rgba(16,42,67,.16)}
 .welcome:after{content:"";position:absolute;width:260px;height:260px;border:1px solid rgba(255,255,255,.13);border-radius:50%;right:-65px;top:-135px;box-shadow:0 0 0 28px rgba(255,255,255,.035),0 0 0 58px rgba(255,255,255,.025)}
-.welcome h1{position:relative;z-index:1;margin:0 0 5px;font-size:clamp(25px,4vw,32px);letter-spacing:-.6px}.welcome p{position:relative;z-index:1;margin:0;opacity:.88}
+.welcome h1{position:relative;z-index:1;margin:0 0 5px;font-size:clamp(25px,4vw,32px);letter-spacing:-.6px}.welcome p{position:relative;z-index:1;margin:0;opacity:.88}.profile-tools{position:relative;z-index:2;display:flex;align-items:center;gap:12px;margin-top:18px}.profile-avatar{width:66px;height:66px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.85);background:#eaf2f9;color:#123f67;display:grid;place-items:center;font-size:22px;font-weight:900}.profile-upload-btn{border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.14);box-shadow:none;padding:9px 13px}.profile-upload-btn:hover{background:rgba(255,255,255,.24)}.profile-tools .muted{color:#e4eef7}.profile-tools input{display:none}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:20px;align-items:start}
 .card{background:rgba(255,255,255,.96);border:1px solid #e0e9f1;border-radius:15px;padding:22px;margin-bottom:20px;box-shadow:var(--shadow)}
 h2{font-size:20px;letter-spacing:-.25px;color:var(--navy);margin:0 0 15px}
@@ -41,7 +41,7 @@ textarea{min-height:88px;resize:vertical}
 <body>
 <header><div class="brand">GLOBAL <span>B2B</span> TRADING</div><div><button class="secondary" id="homeBtn" type="button">Home</button> <button id="logoutBtn" type="button">Sign out</button></div></header>
 <main>
-  <div class="welcome"><h1 id="welcomeTitle">Your dashboard</h1><p id="welcomeSub">Loading your account…</p></div>
+  <div class="welcome"><h1 id="welcomeTitle">Your dashboard</h1><p id="welcomeSub">Loading your account…</p><div id="profileTools" class="profile-tools hidden"><img id="profileAvatar" class="profile-avatar" alt="Your profile picture"><div><button type="button" id="profileUploadBtn" class="profile-upload-btn">📷 Change profile picture</button><input type="file" id="profilePictureInput" accept="image/jpeg,image/png,image/webp"><p class="muted">JPG, PNG or WebP · Maximum 2 MB</p></div></div></div>
   <div id="pageStatus" class="status" role="status" aria-live="polite"></div>
   <section id="adminMembershipArea" class="hidden">
     <article class="card">
@@ -166,6 +166,9 @@ const $ = (id) => document.getElementById(id);
 const setStatus = (msg) => { $("pageStatus").textContent = msg || ""; };
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let currentUser = null, currentProfile = null, membershipActive = false;
+function renderProfileAvatar(){const img=$("profileAvatar");if(!currentProfile)return;img.src=currentProfile.avatar_path?db.storage.from("profile-photos").getPublicUrl(currentProfile.avatar_path).data.publicUrl+"?v="+Date.now():"";img.alt=(currentProfile.full_name||"User")+" profile picture";img.onerror=()=>{img.removeAttribute("src");img.style.display="none";img.outerHTML='<div id="profileAvatar" class="profile-avatar" aria-label="Profile initials">' + esc((currentProfile.full_name||currentProfile.company_name||"U").trim().split(/\\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase()) + '</div>';};if(!currentProfile.avatar_path){img.style.display="none";img.insertAdjacentHTML("afterend",'<div id="profileAvatar" class="profile-avatar">' + esc((currentProfile.full_name||currentProfile.company_name||"U").trim().split(/\\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase()) + '</div>');}}
+$("profileUploadBtn").addEventListener("click",()=>$("profilePictureInput").click());
+$("profilePictureInput").addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;if(!["image/jpeg","image/png","image/webp"].includes(file.type)){setStatus("Please choose a JPG, PNG or WebP image.");e.target.value="";return;}if(file.size>2*1024*1024){setStatus("Image must be 2 MB or smaller.");e.target.value="";return;}const btn=$("profileUploadBtn");btn.disabled=true;setStatus("Uploading profile picture…");const path=currentUser.id+"/avatar";const {error:uploadError}=await db.storage.from("profile-photos").upload(path,file,{upsert:true,contentType:file.type,cacheControl:"3600"});if(uploadError){setStatus("Could not upload profile picture: "+uploadError.message);btn.disabled=false;e.target.value="";return;}const {error:saveError}=await db.rpc("set_my_profile_avatar",{p_avatar_path:path});if(saveError){await db.storage.from("profile-photos").remove([path]);setStatus("Image uploaded but profile could not be updated: "+saveError.message);btn.disabled=false;e.target.value="";return;}currentProfile.avatar_path=path;const old=$("profileAvatar");const fresh=document.createElement("img");fresh.id="profileAvatar";fresh.className="profile-avatar";fresh.alt="Your profile picture";fresh.src=db.storage.from("profile-photos").getPublicUrl(path).data.publicUrl+"?v="+Date.now();old.replaceWith(fresh);setStatus("Profile picture updated successfully.");btn.disabled=false;e.target.value="";});
 
 $("homeBtn").addEventListener("click", () => location.href = "./");
 $("logoutBtn").addEventListener("click", async () => {
@@ -176,7 +179,7 @@ $("logoutBtn").addEventListener("click", async () => {
 });
 
 async function loadProfile() {
-  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status").eq("id",currentUser.id).single();
+  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status,avatar_path").eq("id",currentUser.id).single();
   if (error) throw new Error("Could not load your buyer/seller profile. Please check the profile table setup in Supabase. " + error.message);
   currentProfile = data;
   if (data.role !== "admin" && data.account_status === "suspended") {
@@ -187,6 +190,7 @@ async function loadProfile() {
   }
   $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
   $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase();
+  if (data.role === "buyer" || data.role === "seller") { $("profileTools").classList.remove("hidden"); renderProfileAvatar(); }
   if (data.role === "admin") {
     $("adminMembershipArea").classList.remove("hidden");
     $("adminRequirementsArea").classList.remove("hidden");
