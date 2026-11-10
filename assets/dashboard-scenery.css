@@ -1,0 +1,9 @@
+/* Global B2B Trading — login-random scenic dashboard backdrop */
+body.dashboard-scenic{background:transparent!important;isolation:isolate}
+#dashboardScenery{position:fixed;inset:0;width:100%;height:100%;z-index:-1;display:block;pointer-events:none}
+header,main{position:relative;z-index:1}
+header{background:rgba(255,255,255,.86)!important}
+.welcome{background:linear-gradient(115deg,rgba(7,31,52,.82),rgba(15,70,104,.68),rgba(22,121,183,.62))!important;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+.card{background:rgba(255,255,255,.91)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.product{background:rgba(255,255,255,.89)!important}
+@media(prefers-reduced-motion:reduce){#dashboardScenery{opacity:.92}}
