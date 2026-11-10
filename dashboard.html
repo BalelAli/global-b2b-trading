@@ -132,12 +132,16 @@ textarea{min-height:88px;resize:vertical}
         <h3 id="selectedMembershipTitle">Submit membership payment</h3>
         <div class="product" style="border:1px solid #d7e5f2;background:#f5f9fc">
           <strong>bKash Personal — Send Money</strong>
-          <p>Send your membership payment to this official Global B2B Trading number:</p>
+          <p>Send your membership payment to this official Global B2B Trading bKash number:</p>
           <p style="font-size:22px;font-weight:800;letter-spacing:1px">01816153953</p>
-          <p class="muted">Use bKash Send Money. The membership prices are shown in USD; confirm the exact BDT amount with the administrator before sending. Keep your bKash transaction ID (TrxID). Your membership stays pending until payment is checked and approved by the administrator.</p>
+          <hr style="border:0;border-top:1px solid #d7e5f2;margin:16px 0">
+          <strong>Nagad Personal — Send Money</strong>
+          <p>Send your membership payment to this official Global B2B Trading Nagad number:</p>
+          <p style="font-size:22px;font-weight:800;letter-spacing:1px">01816153953</p>
+          <p class="muted">Choose bKash or Nagad Send Money. Membership prices are shown in USD; confirm the exact BDT amount with the administrator before sending. Keep the transaction ID (TrxID). Your membership stays pending until payment is checked and approved by the administrator.</p>
         </div>
         <input type="hidden" id="membershipPlan">
-        <div class="formgrid"><div><label for="membershipMethod">Payment method</label><select id="membershipMethod" required><option value="bKash">bKash Personal — Send Money</option></select></div><div><label for="membershipReference">bKash Transaction ID (TrxID)</label><input id="membershipReference" required maxlength="160" placeholder="Enter bKash TrxID"></div></div>
+        <div class="formgrid"><div><label for="membershipMethod">Payment method</label><select id="membershipMethod" required><option value="bKash">bKash Personal — Send Money</option><option value="Nagad">Nagad Personal — Send Money</option></select></div><div><label for="membershipReference">Transaction ID (TrxID)</label><input id="membershipReference" required maxlength="160" placeholder="Enter bKash or Nagad TrxID"></div></div>
         <button type="submit" id="membershipSubmitBtn">Submit for verification</button>
       </form>
     </article>
