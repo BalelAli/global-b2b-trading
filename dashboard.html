@@ -46,8 +46,12 @@ textarea{min-height:88px;resize:vertical}
   <section id="adminMembershipArea" class="hidden">
     <article class="card">
       <h2>Admin — Seller Membership Review</h2>
-      <p class="muted">Review payment references. Approving starts the selected membership term; rejecting leaves bidding disabled.</p>
-      <div id="adminMembershipList">Loading membership requests…</div>
+      <p class="muted">Private admin-only history of every seller membership payment, including pending, approved, rejected and expired requests. Payment references are never shown in buyer or seller directories.</p>
+      <div class="formgrid">
+        <div><label for="adminMembershipStatus">Payment / membership status</label><select id="adminMembershipStatus"><option value="">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="rejected">Rejected</option><option value="expired">Expired</option></select></div>
+        <div><label for="adminMembershipSearch">Search payment history</label><input id="adminMembershipSearch" type="search" placeholder="Search seller, company, email, transaction ID…"></div>
+      </div>
+      <div id="adminMembershipList">Loading membership history…</div>
     </article>
   </section>
 
@@ -217,13 +221,38 @@ async function loadProfile() {
 
 async function loadAdminMemberships() {
   const root=$("adminMembershipList");
-  root.textContent="Loading membership requests…";
-  const {data,error}=await db.from("seller_memberships")
-    .select("id,seller_id,plan,amount,currency,payment_method,payment_reference,status,created_at")
-    .eq("status","pending").order("created_at",{ascending:true});
-  if(error){root.textContent="Could not load requests: "+error.message;return;}
-  if(!data.length){root.innerHTML='<div class="empty">No pending membership requests.</div>';return;}
-  root.innerHTML=data.map(m=>'<div class="product"><h3>'+esc(m.plan)+' — '+esc(m.amount)+' '+esc(m.currency)+'</h3><p><b>Seller account ID:</b> '+esc(m.seller_id)+'</p><p><b>Payment:</b> '+esc(m.payment_method)+'</p><p><b>Transaction/reference:</b> '+esc(m.payment_reference)+'</p><p class="muted">Submitted: '+new Date(m.created_at).toLocaleString()+'</p><button type="button" data-membership-review="'+esc(m.id)+'" data-approve="true">Approve & activate</button> <button type="button" class="secondary" data-membership-review="'+esc(m.id)+'" data-approve="false">Reject</button></div>').join("");
+  root.textContent="Loading complete membership payment history…";
+  const [membershipResult,usersResult]=await Promise.all([
+    db.from("seller_memberships").select("id,seller_id,plan,amount,currency,payment_method,payment_reference,status,starts_at,expires_at,created_at").order("created_at",{ascending:false}),
+    db.rpc("admin_list_user_directory")
+  ]);
+  if(membershipResult.error){root.textContent="Could not load membership payment history: "+membershipResult.error.message;return;}
+  if(usersResult.error){root.textContent="Could not load private seller details: "+usersResult.error.message;return;}
+  const records=membershipResult.data||[];
+  const usersById=new Map((usersResult.data||[]).map(user=>[user.id,user]));
+  const render=()=>{
+    const status=$("adminMembershipStatus").value;
+    const term=$("adminMembershipSearch").value.trim().toLowerCase();
+    const rows=records.filter(m=>{
+      const user=usersById.get(m.seller_id)||{};
+      const hay=[user.full_name,user.company_name,user.country,user.email,user.phone,m.seller_id,m.plan,m.payment_method,m.payment_reference,m.status].join(" ").toLowerCase();
+      return (!status||m.status===status)&&(!term||hay.includes(term));
+    });
+    if(!rows.length){root.innerHTML='<div class="empty">No membership payment records match these filters.</div>';return;}
+    root.innerHTML='<p class="muted">Showing '+rows.length+' of '+records.length+' payment records</p>'+rows.map(m=>{
+      const user=usersById.get(m.seller_id)||{};
+      const pending=m.status==="pending";
+      return '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(m.plan)+' — '+esc(m.amount)+' '+esc(m.currency)+'</h3><span class="pill" style="'+(m.status==="pending"?'background:#fff4d6;color:#805b00':m.status==="rejected"?'background:#fcebea;color:#9b2c2c':'')+'">'+esc((m.status||"unknown").toUpperCase())+'</span></div>'+
+      '<p><b>Seller:</b> '+esc(user.full_name||"Unknown seller")+' · '+esc(user.company_name||"Company not provided")+' · '+esc(user.country||"Country not provided")+'</p>'+
+      '<p><b>Seller email:</b> '+esc(user.email||"Not provided")+' · <b>Phone:</b> '+esc(user.phone||"Not provided")+'</p>'+
+      '<p><b>Seller account ID:</b> '+esc(m.seller_id)+'</p><p><b>Payment method:</b> '+esc(m.payment_method)+'</p><p><b>Transaction/reference:</b> '+esc(m.payment_reference)+'</p>'+
+      '<p class="muted">Submitted: '+new Date(m.created_at).toLocaleString()+(m.starts_at?' · Started: '+new Date(m.starts_at).toLocaleString():'')+(m.expires_at?' · Expires: '+new Date(m.expires_at).toLocaleString():'')+'</p>'+
+      (pending?'<button type="button" data-membership-review="'+esc(m.id)+'" data-approve="true">Approve & activate</button> <button type="button" class="secondary" data-membership-review="'+esc(m.id)+'" data-approve="false">Reject</button>':'')+'</div>';
+    }).join("");
+  };
+  $("adminMembershipStatus").onchange=render;
+  $("adminMembershipSearch").oninput=render;
+  render();
 }
 
 $("adminMembershipList").addEventListener("click",async e=>{
