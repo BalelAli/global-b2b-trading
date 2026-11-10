@@ -232,7 +232,7 @@ async function loadAdminMemberships() {
   const root=$("adminMembershipList");
   root.textContent="Loading complete membership payment history…";
   const [membershipResult,usersResult]=await Promise.all([
-    db.from("seller_memberships").select("id,seller_id,plan,amount,currency,payment_method,payment_reference,status,starts_at,expires_at,created_at").order("created_at",{ascending:false}),
+    db.rpc("admin_list_seller_memberships"),
     db.rpc("admin_list_user_directory")
   ]);
   if(membershipResult.error){root.textContent="Could not load membership payment history: "+membershipResult.error.message;return;}
@@ -317,7 +317,7 @@ async function loadAdminSellers() {
   root.textContent="Loading sellers…";
   const [profilesResult,membershipsResult]=await Promise.all([
     db.from("profiles").select("id,full_name,company_name,country,created_at").eq("role","seller").order("created_at",{ascending:false}),
-    db.from("seller_memberships").select("id,seller_id,plan,amount,currency,status,starts_at,expires_at,created_at").order("created_at",{ascending:false})
+    db.rpc("admin_list_seller_memberships")
   ]);
   if(profilesResult.error){root.textContent="Could not load sellers: "+profilesResult.error.message;return;}
   if(membershipsResult.error){root.textContent="Could not load seller membership details: "+membershipsResult.error.message;return;}
