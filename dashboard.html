@@ -313,9 +313,7 @@ async function loadAdminSellers() {
 async function loadAdminUsers() {
   const root=$("adminUsersList");
   root.textContent="Loading user accounts…";
-  const {data:profiles,error}=await db.from("profiles")
-    .select("id,role,full_name,company_name,country,account_status,created_at")
-    .in("role",["buyer","seller"]).order("created_at",{ascending:false});
+  const {data:profiles,error}=await db.rpc("admin_list_user_directory");
   if(error){root.textContent="Could not load user accounts: "+error.message;return;}
   const users=profiles||[];
   const render=()=>{
@@ -324,7 +322,7 @@ async function loadAdminUsers() {
     const status=$("adminUserStatus").value;
     const rows=users.filter(p=>{
       const state=p.account_status||"active";
-      const hay=[p.full_name,p.company_name,p.country,p.id,p.role].join(" ").toLowerCase();
+      const hay=[p.full_name,p.company_name,p.country,p.id,p.role,p.email,p.phone].join(" ").toLowerCase();
       return (!role||p.role===role)&&(!status||state===status)&&(!term||hay.includes(term));
     });
     if(!rows.length){root.innerHTML='<div class="empty">No user accounts match these filters.</div>';return;}
