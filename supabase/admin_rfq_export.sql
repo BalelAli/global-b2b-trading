@@ -15,6 +15,10 @@ using (
   lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
 );
 
+-- Remove the earlier function signature/return type before defining the dashboard-compatible result.
+-- This function is called by the Admin dashboard; no database objects should depend on it.
+drop function if exists public.admin_list_rfqs();
+
 -- Return the RFQ fields consumed by dashboard.html's Admin RFQ list and CSV export.
 -- Seller identity is derived from the product owner; it is not accepted from the caller.
 create or replace function public.admin_list_rfqs()
