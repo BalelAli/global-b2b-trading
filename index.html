@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Global B2B Trading connects buyers and suppliers worldwide.">
+<meta name="description" content="Global B2B Trading helps international buyers and suppliers discover products, submit quotation requests and connect for business.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://balelali.github.io/global-b2b-trading/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Global B2B Trading | Connect. Negotiate. Trade.">
+<meta property="og:description" content="Discover products, connect with suppliers and send business quotation requests on Global B2B Trading.">
+<meta property="og:url" content="https://balelali.github.io/global-b2b-trading/">
 <title>Global B2B Trading | Connect. Negotiate. Trade.</title>
 <style>
 :root{--navy:#102a43;--blue:#1769aa;--pale:#eef6fc;--ink:#243b53;--muted:#627d98;--line:#d9e2ec}
@@ -22,6 +28,9 @@ input,select{width:100%;padding:12px;border:1px solid #bcccdc;border-radius:8px;
 button{border:0;border-radius:8px;background:var(--blue);color:white;padding:12px 18px;font-weight:700;cursor:pointer}
 button.secondary{background:#e6f0f8;color:var(--navy)}button:disabled{opacity:.6;cursor:wait}
 .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.button-link{display:inline-block;border:0;border-radius:8px;background:var(--blue);color:white;padding:12px 18px;font-weight:700;text-decoration:none}
+.button-link.secondary{background:#e6f0f8;color:var(--navy)}
+.button-link:focus-visible,a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f0b429;outline-offset:3px}
 .notice{background:#fff8e6;border:1px solid #f3d48a;padding:13px 15px;border-radius:9px;color:#684d08;font-size:14px}
 #status{margin-top:12px;min-height:24px;font-weight:700;overflow-wrap:anywhere}
 section{scroll-margin-top:20px}.steps{padding:26px 0}.steps .card p{margin-bottom:0}
@@ -37,10 +46,10 @@ footer{text-align:center;color:var(--muted);padding:28px;border-top:1px solid va
 <section class="hero">
   <h1>Connect. Negotiate. Trade.</h1>
   <p>Discover business opportunities and connect with buyers and suppliers around the world.</p>
-  <div class="actions"><a href="#account"><button type="button">Join the Marketplace</button></a><a href="#how"><button class="secondary" type="button">How it works</button></a></div>
+  <div class="actions"><a class="button-link" href="#account">Join the Marketplace</a><a class="button-link secondary" href="#how">How it works</a></div>
 </section>
 <main class="wrap">
-  <div class="notice">Free early access: buyer and seller registration is available. If anything goes wrong, the message will appear below the registration form.</div>
+  <div class="notice">Create a buyer account or register as a seller to get started. Seller membership options and approval status are shown in the seller dashboard. If registration has a problem, a message will appear below the form.</div>
   <section id="how" class="steps">
     <h2>How Global B2B Trading works</h2>
     <div class="grid">
