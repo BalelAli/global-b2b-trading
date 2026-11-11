@@ -10,7 +10,15 @@ const scenes=[
 {name:"Freight trucks on a mountain highway",type:"truck"},
 {name:"A global city at golden hour",type:"city"}
 ];
-const scene=scenes[Math.floor(Math.random()*scenes.length)];
+let sceneIndex=Math.floor(Math.random()*scenes.length);
+try{
+ const previous=Number(localStorage.getItem("globalB2BLastScenery"));
+ if(Number.isInteger(previous)&&previous>=0&&previous<scenes.length&&scenes.length>1&&sceneIndex===previous){
+  sceneIndex=(previous+1+Math.floor(Math.random()*(scenes.length-1)))%scenes.length;
+ }
+ localStorage.setItem("globalB2BLastScenery",String(sceneIndex));
+}catch(_){}
+const scene=scenes[sceneIndex];
 let w=0,h=0,dpr=1,t=0,last=0,raf=0;
 const reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function resize(){dpr=Math.min(window.devicePixelRatio||1,1.7);w=innerWidth;h=innerHeight;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);canvas.style.width=w+"px";canvas.style.height=h+"px";ctx.setTransform(dpr,0,0,dpr,0,0);draw(0)}
