@@ -15,6 +15,9 @@ A free-to-start international B2B marketplace prototype. This repository is sepa
 3. Open `supabase/dashboard.sql` in this GitHub repository, copy all of it, paste into SQL Editor and click **Run**.
 4. Wait for **Success. No rows returned**. Do not run the original `schema.sql` again; the profile setup is already complete.
 
+## Additional marketplace security hardening
+After the dashboard and buyer-privacy SQL have been applied in Supabase, run `supabase/lock-marketplace-identities.sql` once in **SQL Editor → New query**. This adds database-level protection so a seller can update an RFQ reply/status or their own bid details without changing the original buyer request, RFQ owner, bid owner, or requirement association. The script is safe to re-run and does not delete existing records.
+
 ## Sign in and use the dashboard
 1. Open the GitHub Pages website and sign in with your confirmed account.
 2. Successful sign-in now opens `dashboard.html`.
