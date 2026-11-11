@@ -43,6 +43,10 @@ revoke all on function public.admin_list_requirements() from public;
 grant execute on function public.admin_list_requirements() to authenticated;
 
 -- Admin-only RFQ report. Buyer identity is available only to the trusted admin.
+-- The export migration may define this RPC with a typed return table; drop either
+-- prior signature first so this migration can be safely applied in either order.
+drop function if exists public.admin_list_rfqs();
+
 create or replace function public.admin_list_rfqs()
 returns setof jsonb
 language plpgsql
