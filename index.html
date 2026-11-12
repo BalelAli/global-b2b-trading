@@ -106,6 +106,12 @@ const SUPABASE_URL = "https://koxsrvmzzpnzfgrufcto.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_k3IhbhoNFmrihxdrIrgAug_YbfG7cex";
 const status = document.getElementById("status");
 const signupStatus = document.getElementById("signupStatus");
+try {
+  window.addEventListener("pageshow", event => {
+    if (event.persisted) sessionStorage.removeItem("globalB2BGoogleProfile");
+  });
+} catch (_) {}
+
 const showStatus = (message) => {
   status.textContent = message;
   signupStatus.textContent = message;
@@ -247,11 +253,32 @@ document.getElementById("resendConfirmation").addEventListener("click", async ()
 
 document.getElementById("googleLoginButton").addEventListener("click", async () => {
   if (!db) return showStatus("Google sign in is not available right now.");
-  const button=document.getElementById("googleLoginButton");button.disabled=true;showStatus("Connecting to Google…");
+  const button=document.getElementById("googleLoginButton");
+  const profile={
+    role:document.getElementById("role").value,
+    full_name:document.getElementById("fullName").value.trim(),
+    company_name:document.getElementById("company").value.trim(),
+    country:document.getElementById("country").value.trim()
+  };
+  if(!profile.full_name||!profile.company_name||!profile.country){
+    return showStatus("For Google registration, first enter your full name, company name and country, then continue.");
+  }
+  button.disabled=true;showStatus("Connecting to Google…");
   try {
-    const {error}=await db.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin+window.location.pathname.replace(/[^/]*$/,"dashboard.html"),queryParams:{access_type:"offline",prompt:"select_account"},data:{role:document.getElementById("role").value,full_name:document.getElementById("fullName").value.trim(),company_name:document.getElementById("company").value.trim(),country:document.getElementById("country").value.trim()}}});
+    sessionStorage.setItem("globalB2BGoogleProfile",JSON.stringify({...profile,startedAt:Date.now()}));
+    const {error}=await db.auth.signInWithOAuth({
+      provider:"google",
+      options:{
+        redirectTo:window.location.origin+window.location.pathname.replace(/[^/]*$/,"dashboard.html"),
+        queryParams:{access_type:"offline",prompt:"select_account"}
+      }
+    });
     if(error)throw error;
-  } catch(error){showStatus(error.message||"Google sign in failed. Please try again.");button.disabled=false;}
+  } catch(error){
+    try{sessionStorage.removeItem("globalB2BGoogleProfile");}catch(_){}
+    showStatus(error.message||"Google sign in failed. Please try again.");
+    button.disabled=false;
+  }
 });
 
 document.getElementById("login").addEventListener("submit", async (event) => {
