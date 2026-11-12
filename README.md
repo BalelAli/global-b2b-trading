@@ -8,7 +8,7 @@ Global B2B Trading is an early-stage international B2B marketplace. The public s
 
 ## Current implemented features
 
-- Public homepage with buyer/seller email registration, sign-in, Google sign-in, email confirmation, password reset and resend-confirmation controls.
+- Public homepage with buyer/seller email registration, sign-in, Google sign-in, email confirmation, password reset and resend-confirmation controls. Google registration saves the selected buyer/seller role and business details through a restricted Supabase RPC.
 - Buyer dashboard: browse active supplier products, send quotation requests (RFQs), publish buyer requirements, review seller bids and use private bid conversations.
 - Seller dashboard: publish and manage product listings, review product RFQs and send a seller reply, browse open buyer requirements, submit bids and privately message the buyer.
 - Seller bidding and private bid messaging require an active, administrator-approved membership.
@@ -39,17 +39,18 @@ After the base setup, apply the following in order if they have not already been
 
 1. `supabase/enable-admin-role.sql` — allows the `admin` profile role and assigns it to the configured administrator Auth account. The administrator account must already exist and have a profile.
 2. `supabase/admin-users.sql` — account status and admin user-management functions.
-3. `supabase/admin-contact-directory.sql` — admin-only buyer/seller email and phone directory.
-4. `supabase/admin-membership-review.sql` — admin-only seller membership payment history.
-5. `supabase/admin-products.sql` — admin product review and status control.
-6. `supabase/admin-requirements.sql` — admin requirement management.
-7. `supabase/admin-sellers.sql` — admin access to seller profiles.
-8. `supabase/admin-rfqs.sql` — admin RFQ visibility policy.
-9. `supabase/protect-buyer-privacy.sql` — removes buyer IDs from ordinary authenticated RFQ/requirement column access and provides admin-only reporting.
-10. `supabase/admin_rfq_export.sql` — admin RFQ report/export function and profile-directory policy. Apply after the privacy migration so this typed RFQ report definition is the final one.
-11. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks to marketplace RLS policies. Requires `admin-users.sql`.
-12. `supabase/profile-photos.sql` — profile photo storage bucket, policies and avatar RPC.
-13. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
+3. `supabase/complete-google-profile.sql` — securely saves the selected Google signup role and initial business details before the account starts marketplace activity.
+4. `supabase/admin-contact-directory.sql` — admin-only buyer/seller email and phone directory.
+5. `supabase/admin-membership-review.sql` — admin-only seller membership payment history.
+6. `supabase/admin-products.sql` — admin product review and status control.
+7. `supabase/admin-requirements.sql` — admin requirement management.
+8. `supabase/admin-sellers.sql` — admin access to seller profiles.
+9. `supabase/admin-rfqs.sql` — admin RFQ visibility policy.
+10. `supabase/protect-buyer-privacy.sql` — removes buyer IDs from ordinary authenticated RFQ/requirement column access and provides admin-only reporting.
+11. `supabase/admin_rfq_export.sql` — admin RFQ report/export function and profile-directory policy. Apply after the privacy migration so this typed RFQ report definition is the final one.
+12. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks to marketplace RLS policies. Requires `admin-users.sql`.
+13. `supabase/profile-photos.sql` — profile photo storage bucket, policies and avatar RPC.
+14. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
 
 The migrations above are source files only until they are run in the correct Supabase project. Several are safe to re-run, but the initial `schema.sql` is a one-time setup. Do not run every file blindly or run a data-repair script unless the specific issue exists.
 
