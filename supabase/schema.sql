@@ -3,7 +3,7 @@
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text not null check (role in ('buyer', 'seller')),
+  role text not null check (role in ('buyer', 'seller', 'admin')),
   full_name text not null,
   company_name text not null,
   country text not null,
