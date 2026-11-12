@@ -720,11 +720,34 @@ $("requirementForm").addEventListener("submit",async e=>{
   $("requirementForm").reset();setStatus("Your requirement is now visible to all sellers.");await loadMyRequirements();
 });
 
+async function applyPendingGoogleProfile() {
+  let pending=null;
+  try {
+    const raw=sessionStorage.getItem("globalB2BGoogleProfile");
+    sessionStorage.removeItem("globalB2BGoogleProfile");
+    if(raw) pending=JSON.parse(raw);
+  } catch (_) { return; }
+  if(!pending||!["buyer","seller"].includes(pending.role)) return;
+  const age=Date.now()-Number(pending.startedAt);
+  if(!Number.isFinite(age)||age<0||age>10*60*1000) return;
+  const {error}=await db.rpc("complete_my_oauth_profile",{
+    p_role:pending.role,
+    p_full_name:String(pending.full_name||""),
+    p_company_name:String(pending.company_name||""),
+    p_country:String(pending.country||"")
+  });
+  if(error){
+    console.warn("Google profile completion was not applied; existing profile remains unchanged:",error);
+    setStatus("Google sign-in completed, but the selected account type and business details could not be saved. Your existing profile was kept. Please contact the administrator if this is a new account.");
+  }
+}
+
 async function start() {
   const {data,error} = await db.auth.getSession();
   if (error) throw error;
   currentUser = data.session?.user;
   if (!currentUser) { location.href = "./#account"; return; }
+  await applyPendingGoogleProfile();
   await loadProfile();
 }
 start().catch(err => { console.error(err); setStatus(err.message || "Dashboard could not load."); });
