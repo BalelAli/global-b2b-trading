@@ -6,9 +6,17 @@ Website: https://balelali.github.io/global-b2b-trading/
 
 Global B2B Trading is an early-stage international B2B marketplace. The public site is hosted on GitHub Pages and uses Supabase Auth, database tables and Row Level Security (RLS).
 
+## Key files
+
+- `index.html` — public homepage, seller membership explanation and account forms.
+- `about.html` — public description of marketplace features, membership and current limitations.
+- `dashboard.html` — buyer, seller and administrator dashboards.
+- `assets/` — dashboard scenic background styles and script.
+- `supabase/` — database setup and security migrations.
+
 ## Current implemented features
 
-- Public homepage with buyer/seller email registration, sign-in, Google sign-in, email confirmation, password reset and resend-confirmation controls. Google registration saves the selected buyer/seller role and business details through a restricted Supabase RPC.
+- Public homepage with buyer/seller email registration, sign-in, Google sign-in, email confirmation, password reset and resend-confirmation controls. After `complete-google-profile.sql` is applied, Google registration saves the selected buyer/seller role and business details through a restricted Supabase RPC.
 - Buyer dashboard: browse active supplier products, send quotation requests (RFQs), publish buyer requirements, review seller bids and use private bid conversations.
 - Seller dashboard: publish and manage product listings, review product RFQs and send a seller reply, browse open buyer requirements, submit bids and privately message the buyer.
 - Seller bidding and private bid messaging require an active, administrator-approved membership.
