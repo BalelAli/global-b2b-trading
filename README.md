@@ -73,8 +73,8 @@ These rules have been reviewed in the repository source. They still require live
 
 ## Known launch limitations
 
-- Public About, Contact, Terms and Privacy pages are not yet published.
-- A real public support email or other support channel still needs to be supplied and published.
+- The public About page is published. Contact, Terms and Privacy pages are not yet published.
+- A real public support email or other support channel still needs to be supplied before publishing the Contact page.
 - PayPal is not available in the current seller payment form; there is no connected PayPal checkout.
 - There is no automatic payment reconciliation, escrow, order-management or shipping integration.
 - Seller/buyer identity verification and independent trust badges are not implemented.
