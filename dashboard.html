@@ -180,7 +180,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
 const setStatus = (msg) => { $("pageStatus").textContent = msg || ""; };
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let currentUser = null, currentProfile = null, membershipActive = false;
+let currentUser = null, currentProfile = null, membershipActive = false, membershipPending = false;
 function renderProfileAvatar(){const box=$("profileAvatar");if(!currentProfile)return;const initials=(currentProfile.full_name||currentProfile.company_name||"U").trim().split(" ").filter(Boolean).map(x=>x[0]).join("").slice(0,2).toUpperCase();const googlePhoto=currentUser?.user_metadata?.avatar_url||currentUser?.user_metadata?.picture||currentUser?.user_metadata?.photo_url;const photoUrl=googlePhoto||(currentProfile.avatar_path?db.storage.from("profile-photos").getPublicUrl(currentProfile.avatar_path).data.publicUrl+"?v="+Date.now():null);if(photoUrl){box.innerHTML='<img src="'+esc(photoUrl)+'" alt="Your profile picture" referrerpolicy="no-referrer">';}else{box.textContent=initials;}}
 $("profileUploadBtn").addEventListener("click",()=>$("profilePictureInput").click());
 $("profilePictureInput").addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;if(!["image/jpeg","image/png","image/webp"].includes(file.type)){setStatus("Please choose a JPG, PNG or WebP image.");e.target.value="";return;}if(file.size>2*1024*1024){setStatus("Image must be 2 MB or smaller.");e.target.value="";return;}const btn=$("profileUploadBtn");btn.disabled=true;setStatus("Uploading profile picture…");const path=currentUser.id+"/avatar";const {error:uploadError}=await db.storage.from("profile-photos").upload(path,file,{upsert:true,contentType:file.type,cacheControl:"3600"});if(uploadError){setStatus("Could not upload profile picture: "+uploadError.message);btn.disabled=false;e.target.value="";return;}const {error:saveError}=await db.rpc("set_my_profile_avatar",{p_avatar_path:path});if(saveError){setStatus("Image uploaded but profile could not be updated: "+saveError.message);btn.disabled=false;e.target.value="";return;}currentProfile.avatar_path=path;renderProfileAvatar();setStatus("Profile picture updated successfully.");btn.disabled=false;e.target.value="";});
@@ -518,28 +518,40 @@ async function loadAdminRfqs() {
 }
 
 async function loadSellerMembership() {
-  const {data,error}=await db.from("seller_memberships").select("plan,amount,currency,payment_method,payment_reference,status,starts_at,expires_at,created_at").eq("seller_id",currentUser.id).order("created_at",{ascending:false}).limit(1);
+  const {data,error}=await db.from("seller_memberships").select("plan,amount,currency,payment_method,payment_reference,status,starts_at,expires_at,created_at").eq("seller_id",currentUser.id).order("created_at",{ascending:false}).limit(50);
   if(error) throw new Error("Could not load seller membership: "+error.message);
-  const latest=data[0];
-  membershipActive=!!(latest && latest.status==="active" && latest.starts_at && latest.expires_at && new Date(latest.starts_at)<=new Date() && new Date(latest.expires_at)>new Date());
-  $("membershipStatus").innerHTML=membershipActive
-    ? '<span class="pill">ACTIVE MEMBERSHIP</span><p>Your '+esc(latest.plan)+' membership is active until '+new Date(latest.expires_at).toLocaleDateString()+'. You can submit bids.</p>'
-    : latest && latest.status==="pending"
-      ? '<span class="pill" style="background:#fff4d6;color:#815b00">PAYMENT UNDER REVIEW</span><p>Your '+esc(latest.plan)+' plan payment is awaiting administrator verification. Bid submission is locked until approval.</p>'
-      : '<span class="pill" style="background:#fcebea;color:#9b2c2c">NO ACTIVE MEMBERSHIP</span><p>You can browse requirements, but need an active plan to submit bids or message buyers.</p>';
+  const now=Date.now();
+  const activeRecord=(data||[]).find(m=>m.status==="active" && m.starts_at && m.expires_at && new Date(m.starts_at).getTime()<=now && new Date(m.expires_at).getTime()>now);
+  const pendingRecord=(data||[]).find(m=>m.status==="pending");
+  const latest=(data||[])[0];
+  membershipActive=!!activeRecord;
+  membershipPending=!!pendingRecord;
+  $("membershipStatus").innerHTML=activeRecord
+    ? '<span class="pill">ACTIVE MEMBERSHIP</span><p>Your '+esc(activeRecord.plan)+' membership is active until '+new Date(activeRecord.expires_at).toLocaleDateString()+'. You can submit bids and message buyers.</p>'
+    : pendingRecord
+      ? '<span class="pill" style="background:#fff4d6;color:#815b00">PAYMENT UNDER REVIEW</span><p>Your '+esc(pendingRecord.plan)+' plan payment is awaiting administrator verification. Bid submission is locked until approval.</p>'
+      : latest && (latest.status==="expired" || (latest.status==="active" && latest.expires_at && new Date(latest.expires_at).getTime()<=now))
+        ? '<span class="pill" style="background:#fcebea;color:#9b2c2c">MEMBERSHIP EXPIRED</span><p>Your previous membership has expired. Choose a plan to submit a new payment for administrator review.</p>'
+        : '<span class="pill" style="background:#fcebea;color:#9b2c2c">NO ACTIVE MEMBERSHIP</span><p>You can browse requirements, but need an active plan to submit bids or message buyers.</p>';
   $("membershipPaymentForm").classList.add("hidden");
-  document.querySelectorAll(".chooseMembership").forEach(button=>button.addEventListener("click",()=>{
-    $("membershipPlan").value=button.dataset.plan;
-    $("selectedMembershipTitle").textContent=button.dataset.plan==="monthly"?"Monthly Membership — $10":"Yearly Membership — $100";
-    $("membershipPaymentForm").classList.remove("hidden");
-    $("membershipPaymentForm").scrollIntoView({behavior:"smooth",block:"center"});
-  }));
+  document.querySelectorAll(".chooseMembership").forEach(button=>{
+    button.disabled=membershipActive||membershipPending;
+    button.title=membershipActive?"Your membership is already active.":membershipPending?"Your payment is awaiting administrator review.":"";
+    button.onclick=()=>{
+      if(membershipActive||membershipPending)return;
+      $("membershipPlan").value=button.dataset.plan;
+      $("selectedMembershipTitle").textContent=button.dataset.plan==="monthly"?"Monthly Membership — $10":"Yearly Membership — $100";
+      $("membershipPaymentForm").classList.remove("hidden");
+      $("membershipPaymentForm").scrollIntoView({behavior:"smooth",block:"center"});
+    };
+  });
   $("membershipPaymentForm").onsubmit=async e=>{
-    e.preventDefault();const btn=$("membershipSubmitBtn");btn.disabled=true;
+    e.preventDefault();
+    if(membershipActive||membershipPending){setStatus("An active membership or pending payment already exists. Please wait for the current membership status.");return;}
+    const btn=$("membershipSubmitBtn");btn.disabled=true;
     const plan=$("membershipPlan").value;
     const {error:insertError}=await db.from("seller_memberships").insert({seller_id:currentUser.id,plan,amount:plan==="monthly"?10:100,currency:"USD",payment_method:$("membershipMethod").value,payment_reference:$("membershipReference").value.trim(),status:"pending"});
-    btn.disabled=false;
-    if(insertError){setStatus("Could not submit membership payment: "+insertError.message);return;}
+    if(insertError){setStatus("Could not submit membership payment: "+insertError.message);btn.disabled=false;return;}
     $("membershipPaymentForm").reset();$("membershipPaymentForm").classList.add("hidden");
     setStatus("Membership payment reference submitted. Your plan will activate after administrator verification.");
     await loadSellerMembership();
