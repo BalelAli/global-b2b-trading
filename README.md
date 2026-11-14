@@ -57,8 +57,9 @@ After the base setup, apply the following in order if they have not already been
 10. `supabase/protect-buyer-privacy.sql` — removes buyer IDs from ordinary authenticated RFQ/requirement column access and provides admin-only reporting.
 11. `supabase/admin_rfq_export.sql` — admin RFQ report/export function and profile-directory policy. Apply after the privacy migration so this typed RFQ report definition is the final one.
 12. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks to marketplace RLS policies. Requires `admin-users.sql`.
-13. `supabase/profile-photos.sql` — profile photo storage bucket, policies and avatar RPC.
-14. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
+13. `supabase/prevent-duplicate-membership-requests.sql` — adds a database trigger to prevent duplicate pending membership requests and overlapping active memberships. Run after `dashboard.sql` and `enforce-account-suspension.sql`.
+14. `supabase/profile-photos.sql` — profile photo storage bucket, policies and avatar RPC.
+15. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
 
 The migrations above are source files only until they are run in the correct Supabase project. Several are safe to re-run, but the initial `schema.sql` is a one-time setup. Do not run every file blindly or run a data-repair script unless the specific issue exists.
 
