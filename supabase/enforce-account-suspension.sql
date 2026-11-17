@@ -113,6 +113,8 @@ using (
 )
 with check (
   public.is_current_user_active()
+  and public.is_current_user_seller()
+  and public.has_active_seller_membership()
   and exists (
     select 1 from public.products p
     where p.id = product_id and p.seller_id = auth.uid()
