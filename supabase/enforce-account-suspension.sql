@@ -27,6 +27,28 @@ $$;
 revoke all on function public.is_current_user_active() from public;
 grant execute on function public.is_current_user_active() to authenticated, anon;
 
+-- Remove any legacy permissive policies for sensitive seller operations first.
+-- PostgreSQL combines permissive policies with OR, so replacing only a known policy
+-- name can leave an older, more permissive policy active.
+do $
+declare
+  pol record;
+begin
+  for pol in
+    select schemaname, tablename, policyname
+    from pg_policies
+    where schemaname = 'public'
+      and (
+        (tablename = 'products' and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL'))
+        or (tablename = 'rfqs' and cmd in ('UPDATE', 'ALL'))
+        or (tablename = 'rfq_messages' and cmd in ('SELECT', 'INSERT', 'ALL'))
+      )
+  loop
+    execute format('drop policy %I on %I.%I', pol.policyname, pol.schemaname, pol.tablename);
+  end loop;
+end
+$;
+
 -- Products
 drop policy if exists "Public can view active products and sellers can view own" on public.products;
 create policy "Public can view active products and sellers can view own"
