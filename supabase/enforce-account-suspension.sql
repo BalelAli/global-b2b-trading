@@ -42,6 +42,7 @@ begin
         (tablename = 'products' and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL'))
         or (tablename = 'rfqs' and cmd in ('UPDATE', 'ALL'))
         or (tablename = 'rfq_messages' and cmd in ('SELECT', 'INSERT', 'ALL'))
+        or (tablename = 'bid_messages' and cmd in ('SELECT', 'ALL'))
       )
   loop
     execute format('drop policy %I on %I.%I', pol.policyname, pol.schemaname, pol.tablename);
@@ -267,7 +268,8 @@ with check (
   and public.has_active_seller_membership()
 );
 
--- Private bid conversations
+-- Private bid conversations. Sellers must keep an active membership to read
+-- or send bid messages; buyers can always access their own requirement conversations.
 drop policy if exists "Only bid participants can read bid messages" on public.bid_messages;
 create policy "Only bid participants can read bid messages"
 on public.bid_messages for select to authenticated
@@ -278,7 +280,14 @@ using (
     from public.requirement_bids b
     join public.buyer_requirements br on br.id = b.requirement_id
     where b.id = bid_messages.bid_id
-      and (br.buyer_id = auth.uid() or b.seller_id = auth.uid())
+      and (
+        br.buyer_id = auth.uid()
+        or (
+          b.seller_id = auth.uid()
+          and public.is_current_user_seller()
+          and public.has_active_seller_membership()
+        )
+      )
   )
 );
 
@@ -297,6 +306,7 @@ with check (
         br.buyer_id = auth.uid()
         or (
           b.seller_id = auth.uid()
+          and public.is_current_user_seller()
           and public.has_active_seller_membership()
         )
       )
