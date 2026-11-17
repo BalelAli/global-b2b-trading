@@ -56,12 +56,14 @@ After the base setup, apply the following in order if they have not already been
 9. `supabase/admin-rfqs.sql` — admin RFQ visibility policy.
 10. `supabase/protect-buyer-privacy.sql` — removes buyer IDs from ordinary authenticated RFQ/requirement column access and provides admin-only reporting.
 11. `supabase/admin_rfq_export.sql` — admin RFQ report/export function and profile-directory policy. Apply after the privacy migration so this typed RFQ report definition is the final one.
-12. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks to marketplace RLS policies. Requires `admin-users.sql`.
+12. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks and replaces legacy permissive marketplace RLS policies. Run after `admin-users.sql`, `dashboard.sql`, and the admin/privacy policy migrations above. Re-run it after any later migration that recreates the affected product, RFQ or RFQ-message policies.
 13. `supabase/prevent-duplicate-membership-requests.sql` — adds a database trigger to prevent duplicate pending membership requests and overlapping active memberships. Run after `dashboard.sql` and `enforce-account-suspension.sql`.
 14. `supabase/profile-photos.sql` — profile photo storage bucket, policies and avatar RPC.
 15. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
 
-The migrations above are source files only until they are run in the correct Supabase project. Several are safe to re-run, but the initial `schema.sql` is a one-time setup. Do not run every file blindly or run a data-repair script unless the specific issue exists.
+The migrations above are source files only until they are run in the correct Supabase project.
+
+**Important ordering rule:** `enforce-account-suspension.sql` is the final policy-hardening step for products, RFQs and RFQ messages. Do not run an older policy-creation script after it unless you then re-run this enforcement migration. GitHub commits do not execute SQL in Supabase; each required migration must still be applied in the Supabase SQL Editor, only once where indicated. Several are safe to re-run, but the initial `schema.sql` is a one-time setup. Do not run every file blindly or run a data-repair script unless the specific issue exists.
 
 ### Optional repair scripts
 
