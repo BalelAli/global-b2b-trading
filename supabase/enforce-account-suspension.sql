@@ -1,5 +1,5 @@
 -- Global B2B Trading: enforce suspended account restrictions in Supabase RLS.
--- Run this AFTER supabase/admin-users.sql.
+-- Run this AFTER supabase/dashboard.sql, supabase/admin-users.sql, and the privacy/admin policy migrations.
 -- This migration only replaces marketplace access policies; it does not edit or delete data.
 -- Safe to re-run.
 
@@ -47,8 +47,8 @@ begin
   loop
     execute format('drop policy %I on %I.%I', pol.policyname, pol.schemaname, pol.tablename);
   end loop;
-end
-$$;
+end;
+$;
 
 -- Products
 drop policy if exists "Public can view active products and sellers can view own" on public.products;
