@@ -48,7 +48,7 @@ begin
     execute format('drop policy %I on %I.%I', pol.policyname, pol.schemaname, pol.tablename);
   end loop;
 end;
-$;
+$$;
 
 -- Products
 drop policy if exists "Public can view active products and sellers can view own" on public.products;
