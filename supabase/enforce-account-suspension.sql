@@ -42,7 +42,7 @@ begin
         (tablename = 'products' and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL'))
         or (tablename = 'rfqs' and cmd in ('UPDATE', 'ALL'))
         or (tablename = 'rfq_messages' and cmd in ('SELECT', 'INSERT', 'ALL'))
-        or (tablename = 'bid_messages' and cmd in ('SELECT', 'ALL'))
+        or (tablename = 'bid_messages' and cmd in ('SELECT', 'INSERT', 'ALL'))
       )
   loop
     execute format('drop policy %I on %I.%I', pol.policyname, pol.schemaname, pol.tablename);
