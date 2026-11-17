@@ -41,19 +41,32 @@ create policy "Sellers can add own products"
 on public.products for insert to authenticated
 with check (
   public.is_current_user_active()
+  and public.is_current_user_seller()
   and auth.uid() = seller_id
 );
 
 drop policy if exists "Sellers can update own products" on public.products;
 create policy "Sellers can update own products"
 on public.products for update to authenticated
-using (public.is_current_user_active() and auth.uid() = seller_id)
-with check (public.is_current_user_active() and auth.uid() = seller_id);
+using (
+  public.is_current_user_active()
+  and public.is_current_user_seller()
+  and auth.uid() = seller_id
+)
+with check (
+  public.is_current_user_active()
+  and public.is_current_user_seller()
+  and auth.uid() = seller_id
+);
 
 drop policy if exists "Sellers can delete own products" on public.products;
 create policy "Sellers can delete own products"
 on public.products for delete to authenticated
-using (public.is_current_user_active() and auth.uid() = seller_id);
+using (
+  public.is_current_user_active()
+  and public.is_current_user_seller()
+  and auth.uid() = seller_id
+);
 
 -- RFQs
 drop policy if exists "Buyers and relevant sellers can view RFQs" on public.rfqs;
@@ -63,9 +76,13 @@ using (
   public.is_current_user_active()
   and (
     auth.uid() = buyer_id
-    or exists (
-      select 1 from public.products p
-      where p.id = product_id and p.seller_id = auth.uid()
+    or (
+      public.is_current_user_seller()
+      and public.has_active_seller_membership()
+      and exists (
+        select 1 from public.products p
+        where p.id = product_id and p.seller_id = auth.uid()
+      )
     )
   )
 );
@@ -87,6 +104,8 @@ create policy "Sellers can update RFQ status for own products"
 on public.rfqs for update to authenticated
 using (
   public.is_current_user_active()
+  and public.is_current_user_seller()
+  and public.has_active_seller_membership()
   and exists (
     select 1 from public.products p
     where p.id = product_id and p.seller_id = auth.uid()
@@ -111,7 +130,14 @@ using (
     from public.rfqs r
     join public.products p on p.id = r.product_id
     where r.id = rfq_messages.rfq_id
-      and (r.buyer_id = auth.uid() or p.seller_id = auth.uid())
+      and (
+        r.buyer_id = auth.uid()
+        or (
+          p.seller_id = auth.uid()
+          and public.is_current_user_seller()
+          and public.has_active_seller_membership()
+        )
+      )
   )
 );
 
@@ -126,7 +152,14 @@ with check (
     from public.rfqs r
     join public.products p on p.id = r.product_id
     where r.id = rfq_messages.rfq_id
-      and (r.buyer_id = auth.uid() or p.seller_id = auth.uid())
+      and (
+        r.buyer_id = auth.uid()
+        or (
+          p.seller_id = auth.uid()
+          and public.is_current_user_seller()
+          and public.has_active_seller_membership()
+        )
+      )
   )
 );
 
