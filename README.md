@@ -71,6 +71,7 @@ The migrations above are source files only until they are run in the correct Sup
 
 - `supabase/fix-membership-approval.sql` — use only if the administrator membership approval function needs repair.
 - `supabase/fix-rfq-reply-status.sql` — a targeted data update for RFQs whose status is still `new` despite having a seller reply. It changes existing rows; do not run unless that inconsistency is present.
+- `supabase/require-active-membership-for-bid-messages.sql` — a targeted policy repair for older deployments where the bid-message read/send policies do not yet require an active seller membership. The current `supabase/enforce-account-suspension.sql` already installs the same checks, so this separate repair is not needed when the current enforcement migration has been applied successfully.
 
 ## Privacy and security model
 
