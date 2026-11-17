@@ -1,6 +1,7 @@
 -- Global B2B Trading: buyer/seller dashboard tables
 -- Run this script once in Supabase SQL Editor after the original schema.sql.
--- Safe to re-run: policies are dropped before they are recreated.
+-- Re-run warning: this recreates baseline policies without later membership/suspension restrictions.
+-- If re-run on an existing secured project, immediately re-run enforce-account-suspension.sql.
 
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
