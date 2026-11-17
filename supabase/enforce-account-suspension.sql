@@ -30,7 +30,7 @@ grant execute on function public.is_current_user_active() to authenticated, anon
 -- Remove any legacy permissive policies for sensitive seller operations first.
 -- PostgreSQL combines permissive policies with OR, so replacing only a known policy
 -- name can leave an older, more permissive policy active.
-do $
+do $$
 declare
   pol record;
 begin
@@ -47,7 +47,7 @@ begin
     execute format('drop policy %I on %I.%I', pol.policyname, pol.schemaname, pol.tablename);
   end loop;
 end
-$;
+$$;
 
 -- Products
 drop policy if exists "Public can view active products and sellers can view own" on public.products;
