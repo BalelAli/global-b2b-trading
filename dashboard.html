@@ -187,19 +187,23 @@ async function renderProfileAvatar(){
   if(!currentProfile)return;
   const initials=(currentProfile.full_name||currentProfile.company_name||"U").trim().split(" ").filter(Boolean).map(x=>x[0]).join("").slice(0,2).toUpperCase();
   const googlePhoto=currentUser?.user_metadata?.avatar_url||currentUser?.user_metadata?.picture||currentUser?.user_metadata?.photo_url;
+  const path=currentProfile.avatar_path;
+  if(path){
+    box.textContent=initials;
+    try{
+      const {data,error}=await db.storage.from("profile-photos").createSignedUrl(path,3600);
+      if(!error&&data?.signedUrl&&currentProfile?.avatar_path===path){
+        box.innerHTML='<img src="'+esc(data.signedUrl)+'" alt="Your profile picture" referrerpolicy="no-referrer">';
+        return;
+      }
+    }catch(error){
+      console.warn("Could not load private profile photo:",error);
+    }
+  }
   if(googlePhoto){
     box.innerHTML='<img src="'+esc(googlePhoto)+'" alt="Your profile picture" referrerpolicy="no-referrer">';
-    return;
-  }
-  const path=currentProfile.avatar_path;
-  if(!path){box.textContent=initials;return;}
-  box.textContent=initials;
-  try{
-    const {data,error}=await db.storage.from("profile-photos").createSignedUrl(path,3600);
-    if(error||!data?.signedUrl||currentProfile?.avatar_path!==path)return;
-    box.innerHTML='<img src="'+esc(data.signedUrl)+'" alt="Your profile picture" referrerpolicy="no-referrer">';
-  }catch(error){
-    console.warn("Could not load private profile photo:",error);
+  }else{
+    box.textContent=initials;
   }
 }
 $("profileUploadBtn").addEventListener("click",()=>$("profilePictureInput").click());
