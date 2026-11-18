@@ -1,5 +1,5 @@
--- Global B2B Trading: secure buyer/seller profile picture uploads.
--- Run this once in the Supabase SQL Editor. Safe to re-run.
+-- Global B2B Trading: private buyer/seller profile picture uploads.
+-- Run this in the Supabase SQL Editor. Safe to re-run; it also makes an existing bucket private.
 
 alter table public.profiles
   add column if not exists avatar_path text;
@@ -8,12 +8,12 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values (
   'profile-photos',
   'profile-photos',
-  true,
+  false,
   2097152,
   array['image/jpeg','image/png','image/webp']
 )
 on conflict (id) do update
-set public = true,
+set public = false,
     file_size_limit = 2097152,
     allowed_mime_types = array['image/jpeg','image/png','image/webp'];
 
