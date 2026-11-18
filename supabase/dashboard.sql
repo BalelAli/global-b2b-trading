@@ -80,6 +80,11 @@ on public.rfqs for insert to authenticated
 with check (
   auth.uid() = buyer_id
   and exists (
+    select 1 from public.profiles buyer_profile
+    where buyer_profile.id = auth.uid()
+      and buyer_profile.role = 'buyer'
+  )
+  and exists (
     select 1 from public.products p
     where p.id = product_id and p.status = 'active'
   )
@@ -131,7 +136,22 @@ using (
     from public.rfqs r
     join public.products p on p.id = r.product_id
     where r.id = rfq_messages.rfq_id
-      and (r.buyer_id = auth.uid() or p.seller_id = auth.uid())
+      and (
+        (
+          r.buyer_id = auth.uid()
+          and exists (
+            select 1 from public.profiles buyer_profile
+            where buyer_profile.id = auth.uid() and buyer_profile.role = 'buyer'
+          )
+        )
+        or (
+          p.seller_id = auth.uid()
+          and exists (
+            select 1 from public.profiles seller_profile
+            where seller_profile.id = auth.uid() and seller_profile.role = 'seller'
+          )
+        )
+      )
   )
 );
 
@@ -145,7 +165,22 @@ with check (
     from public.rfqs r
     join public.products p on p.id = r.product_id
     where r.id = rfq_messages.rfq_id
-      and (r.buyer_id = auth.uid() or p.seller_id = auth.uid())
+      and (
+        (
+          r.buyer_id = auth.uid()
+          and exists (
+            select 1 from public.profiles buyer_profile
+            where buyer_profile.id = auth.uid() and buyer_profile.role = 'buyer'
+          )
+        )
+        or (
+          p.seller_id = auth.uid()
+          and exists (
+            select 1 from public.profiles seller_profile
+            where seller_profile.id = auth.uid() and seller_profile.role = 'seller'
+          )
+        )
+      )
   )
 );
 
