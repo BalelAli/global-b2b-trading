@@ -22,7 +22,7 @@ Global B2B Trading is an early-stage international B2B marketplace. The public s
 - Seller bidding and private bid messaging require an active, administrator-approved membership.
 - Seller membership plans: **$10 monthly** or **$100 yearly**.
 - Admin dashboard: review membership payments, manage buyer requirements, sellers, users and products, review RFQs, export RFQ reports and view private buyer/seller contact details.
-- Profile photo upload for signed-in marketplace users (JPG, PNG or WebP; maximum 2 MB).
+- Profile photo upload for signed-in marketplace users (JPG, PNG or WebP; maximum 2 MB). Uploaded photos are stored in a private bucket and displayed to their owner with short-lived signed URLs.
 
 ## Payment status — important
 
@@ -58,7 +58,7 @@ After the base setup, apply the following in order if they have not already been
 11. `supabase/admin_rfq_export.sql` — admin RFQ report/export function and profile-directory policy. Apply after the privacy migration so this typed RFQ report definition is the final one.
 12. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks and replaces legacy permissive marketplace RLS policies. Run after `admin-users.sql`, `dashboard.sql`, and the admin/privacy policy migrations above. Re-run it after any later migration that recreates the affected product, RFQ or RFQ-message policies.
 13. `supabase/prevent-duplicate-membership-requests.sql` — adds a database trigger to prevent duplicate pending membership requests and overlapping active memberships. Run after `dashboard.sql` and `enforce-account-suspension.sql`.
-14. `supabase/profile-photos.sql` — profile photo storage bucket, policies and avatar RPC.
+14. `supabase/profile-photos.sql` — private profile photo storage bucket, owner-only object policies and avatar RPC. If this migration was previously run while the bucket was public, re-run the updated file to make the bucket private.
 15. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
 
 The migrations above are source files only until they are run in the correct Supabase project.
@@ -68,6 +68,8 @@ The migrations above are source files only until they are run in the correct Sup
 **Important ordering rule:** `enforce-account-suspension.sql` is the final policy-hardening step for products, RFQs and RFQ messages. Do not run an older policy-creation script after it unless you then re-run this enforcement migration. GitHub commits do not execute SQL in Supabase; each required migration must still be applied in the Supabase SQL Editor, only once where indicated. Several are safe to re-run, but the initial `schema.sql` is a one-time setup. Do not run every file blindly or run a data-repair script unless the specific issue exists.
 
 **RFQ role-check update:** On an existing Supabase project, re-run the current `supabase/enforce-account-suspension.sql` from this repository to apply the buyer-role checks for RFQ creation and private RFQ conversations. This migration is safe to re-run and does not change existing marketplace records. Do not re-run `dashboard.sql` on an existing database.
+
+**Profile-photo privacy update:** Re-run the current `supabase/profile-photos.sql` on an existing project to change the `profile-photos` bucket from public to private. The dashboard now uses a short-lived signed URL to display the signed-in user's own uploaded photo. This migration is safe to re-run.
 
 ### Optional repair scripts
 
