@@ -76,7 +76,7 @@ The migrations above are source files only until they are run in the correct Sup
 ## Privacy and security model
 
 - Buyer identity fields are intended to remain hidden from seller-facing requirement/RFQ queries; the admin has separate privileged reporting functions.
-- Requirement bids and their private messages are scoped to the requirement owner and the bidding seller.
+- Requirement bids and their private messages are scoped to the requirement owner and the bidding seller. Buyer-side RFQ creation and RFQ chat require a buyer profile; seller-side RFQ chat requires the relevant seller profile and an active membership.
 - RFQs are scoped to the buyer and the seller who owns the relevant product.
 - Seller payment references are visible to the seller who submitted them and the administrator, not to public directories.
 - Seller bidding and seller-side private bid messages are also gated by active membership in the database policies.
