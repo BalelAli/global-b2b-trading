@@ -13,9 +13,17 @@ using (
     join public.buyer_requirements br on br.id = b.requirement_id
     where b.id = bid_messages.bid_id
       and (
-        br.buyer_id = auth.uid()
+        (
+          br.buyer_id = auth.uid()
+          and exists (
+            select 1 from public.profiles buyer_profile
+            where buyer_profile.id = auth.uid()
+              and buyer_profile.role = 'buyer'
+          )
+        )
         or (
           b.seller_id = auth.uid()
+          and public.is_current_user_seller()
           and public.has_active_seller_membership()
         )
       )
@@ -34,9 +42,17 @@ with check (
     join public.buyer_requirements br on br.id = b.requirement_id
     where b.id = bid_messages.bid_id
       and (
-        br.buyer_id = auth.uid()
+        (
+          br.buyer_id = auth.uid()
+          and exists (
+            select 1 from public.profiles buyer_profile
+            where buyer_profile.id = auth.uid()
+              and buyer_profile.role = 'buyer'
+          )
+        )
         or (
           b.seller_id = auth.uid()
+          and public.is_current_user_seller()
           and public.has_active_seller_membership()
         )
       )
