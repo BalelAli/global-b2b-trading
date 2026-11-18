@@ -17,8 +17,8 @@ Global B2B Trading is an early-stage international B2B marketplace. The public s
 ## Current implemented features
 
 - Public homepage with buyer/seller email registration, sign-in, Google sign-in, email confirmation, password reset and resend-confirmation controls. After `complete-google-profile.sql` is applied, Google registration saves the selected buyer/seller role and business details through a restricted Supabase RPC.
-- Buyer dashboard: browse active supplier products, send quotation requests (RFQs), publish buyer requirements, review seller bids and use private bid conversations.
-- Seller dashboard: publish and manage product listings, review product RFQs and send a seller reply, browse open buyer requirements, submit bids and privately message the buyer.
+- Buyer dashboard: browse active supplier products, send quotation requests (RFQs), exchange private RFQ messages with the relevant supplier, publish buyer requirements, review seller bids and use private bid conversations.
+- Seller dashboard: publish and manage product listings, review product RFQs, exchange private RFQ messages with the relevant buyer, browse open buyer requirements, submit bids and privately message the buyer.
 - Seller bidding and private bid messaging require an active, administrator-approved membership.
 - Seller membership plans: **$10 monthly** or **$100 yearly**.
 - Admin dashboard: review membership payments, manage buyer requirements, sellers, users and products, review RFQs, export RFQ reports and view private buyer/seller contact details.
@@ -92,7 +92,7 @@ These rules have been reviewed in the repository source. They still require live
 - PayPal is not available in the current seller payment form; there is no connected PayPal checkout.
 - There is no automatic payment reconciliation, escrow, order-management or shipping integration.
 - Seller/buyer identity verification and independent trust badges are not implemented.
-- RFQ communication currently uses a seller reply field; the full bid workflow has private two-way messages, but RFQ messages are not yet a full chat interface.
+- Product RFQs now have a private two-way message interface for the buyer and the relevant supplier. The admin RFQ report does not display private RFQ chat content.
 - The marketplace has not yet passed end-to-end tests with separate buyer, seller and administrator accounts.
 
 Do not describe the marketplace as verified, escrow-protected, payment-integrated or production-ready until the relevant features and live tests are complete.
