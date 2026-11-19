@@ -458,7 +458,7 @@ async function loadAdminVerification(){
     const btn=e.target.closest("[data-verify-user]");
     if(!btn)return;
     const next=btn.dataset.verifyNext==="true";
-    if(!confirm((next?"Verify ":"Remove verification from ")+(next?"this account?":"this account?")))return;
+    if(!confirm(next?"Mark this account as verified?":"Remove verification from this account?"))return;
     btn.disabled=true;
     const {error:updateError}=await db.rpc("admin_set_verification",{p_user_id:btn.dataset.verifyUser,p_verified:next});
     if(updateError){setStatus("Could not update verification: "+updateError.message);btn.disabled=false;return;}
