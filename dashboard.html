@@ -273,9 +273,11 @@ function scrollToDashboardHash(role){
   setTimeout(scrollTarget,900);
 }
 async function loadProfile() {
-  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status,avatar_path,is_verified").eq("id",currentUser.id).single();
+  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status,avatar_path").eq("id",currentUser.id).single();
   if (error) throw new Error("Could not load your buyer/seller profile. Please check the profile table setup in Supabase. " + error.message);
   currentProfile = data;
+  let isVerified=false;
+  try { const verification=await db.rpc("get_public_verification",{p_user_ids:[data.id]}); isVerified=!!(verification.data||[]).some(v=>v.id===data.id&&v.is_verified); } catch(_e){}
   if (data.role !== "admin" && data.account_status === "suspended") {
     setStatus("This account has been suspended by the marketplace administrator. Please contact support.");
     await db.auth.signOut();
@@ -283,7 +285,7 @@ async function loadProfile() {
     return;
   }
   $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
-  $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase() + (data.is_verified ? " · ✓ VERIFIED" : "");
+  $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase() + (isVerified ? " · ✓ VERIFIED" : "");
   if (data.role === "buyer" || data.role === "seller" || data.role === "admin") { $("settings").classList.remove("hidden"); renderProfileAvatar(); }
   if (data.role === "admin") { $("messagesBtn").classList.add("hidden");
     $("adminMembershipArea").classList.remove("hidden");
@@ -738,8 +740,10 @@ async function loadBuyerData() {
   ]);
   if (products.error) throw new Error("Could not load products: " + products.error.message);
   if (rfqs.error) throw new Error("Could not load your quotation requests: " + rfqs.error.message);
+  let verifiedSellerIds=new Set();
+  try { const verification=await db.rpc("get_public_verification",{p_user_ids:[...new Set((products.data||[]).map(p=>p.seller_id))]}); verifiedSellerIds=new Set((verification.data||[]).filter(v=>v.is_verified&&v.role==="seller").map(v=>v.id)); } catch(_e){}
   $("marketProducts").innerHTML = products.data.length ? products.data.map(p =>
-    '<div class="product" data-search="'+esc([p.name,p.category,p.description].join(" "))+'" data-country="'+esc(p.country)+'"><h3>'+esc(p.name)+'</h3><p class="muted">'+esc(p.category)+' · '+esc(p.country)+' · MOQ '+esc(p.min_order_qty)+'</p><p>'+esc(p.description)+'</p><p><strong>'+(p.price ? esc(p.currency)+' '+esc(p.price)+' / unit' : 'Price on request')+'</strong></p><form class="rfqForm" data-product="'+esc(p.id)+'"><div class="formgrid"><div><label>Quantity</label><input name="quantity" type="number" min="1" required placeholder="Required quantity"></div><div><label>Target unit price (optional)</label><input name="target_price" type="number" min="0" step="0.01" placeholder="Your target price"></div></div><label>Message to seller</label><textarea name="message" maxlength="1000" placeholder="Share your specifications or delivery requirements"></textarea><button type="submit">Request a quote</button></form></div>'
+    '<div class="product" data-search="'+esc([p.name,p.category,p.description].join(" "))+'" data-country="'+esc(p.country)+'"><h3>'+esc(p.name)+(verifiedSellerIds.has(p.seller_id)?' <span class="pill" style="background:#e5f7ee;color:#137447">✓ VERIFIED SELLER</span>':'')+'</h3><p class="muted">'+esc(p.category)+' · '+esc(p.country)+' · MOQ '+esc(p.min_order_qty)+'</p><p>'+esc(p.description)+'</p><p><strong>'+(p.price ? esc(p.currency)+' '+esc(p.price)+' / unit' : 'Price on request')+'</strong></p><form class="rfqForm" data-product="'+esc(p.id)+'"><div class="formgrid"><div><label>Quantity</label><input name="quantity" type="number" min="1" required placeholder="Required quantity"></div><div><label>Target unit price (optional)</label><input name="target_price" type="number" min="0" step="0.01" placeholder="Your target price"></div></div><label>Message to seller</label><textarea name="message" maxlength="1000" placeholder="Share your specifications or delivery requirements"></textarea><button type="submit">Request a quote</button></form></div>'
   ).join("") : '<div class="empty">No products have been listed yet. Please check again later.</div>';
   $("buyerRfqs").innerHTML = rfqs.data.length ? rfqs.data.map(r =>
     '<div class="product"><strong>'+esc(r.products?.name || "Product")+'</strong><p>Quantity: '+esc(r.quantity)+' · Status: '+esc(r.status)+'</p><p>Target price: '+(r.target_price !== null ? esc(r.products?.currency || "USD")+' '+esc(r.target_price)+' / unit' : 'Not specified')+'</p><p class="muted">'+esc(r.message || "No additional message")+'</p>'+(r.seller_reply ? '<div style="margin-top:12px;padding:13px;border-left:3px solid #1769aa;background:#eef6fc;border-radius:8px"><strong>Seller reply</strong><p>'+esc(r.seller_reply)+'</p>'+(r.seller_replied_at ? '<p class="muted">'+new Date(r.seller_replied_at).toLocaleString()+'</p>' : '')+'</div>' : '<p class="muted">Waiting for the seller\'s reply.</p>')+'<div class="rfqChat" data-rfq-id="'+esc(r.id)+'">Loading private conversation…</div></div>'
