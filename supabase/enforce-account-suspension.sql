@@ -243,6 +243,59 @@ with check (
   and not public.is_current_user_seller()
 );
 
+-- Buyer privacy compatibility: bid policies must not query the restricted buyer_id
+-- column from buyer_requirements under the caller's privileges. These helpers
+-- return only an authorization boolean and are owned by the migration executor.
+create or replace function public.is_owner_of_requirement(p_requirement_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select public.is_current_user_active()
+    and exists (
+      select 1
+      from public.buyer_requirements br
+      where br.id = p_requirement_id
+        and br.buyer_id = auth.uid()
+        and exists (
+          select 1 from public.profiles p
+          where p.id = auth.uid() and p.role = 'buyer'
+        )
+    );
+$;
+
+revoke all on function public.is_owner_of_requirement(uuid) from public;
+grant execute on function public.is_owner_of_requirement(uuid) to authenticated;
+
+create or replace function public.can_access_bid_conversation(p_bid_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select public.is_current_user_active()
+    and exists (
+      select 1
+      from public.requirement_bids b
+      join public.buyer_requirements br on br.id = b.requirement_id
+      where b.id = p_bid_id
+        and (
+          public.is_owner_of_requirement(br.id)
+          or (
+            b.seller_id = auth.uid()
+            and public.is_current_user_seller()
+            and public.has_active_seller_membership()
+          )
+        )
+    );
+$;
+
+revoke all on function public.can_access_bid_conversation(uuid) from public;
+grant execute on function public.can_access_bid_conversation(uuid) to authenticated;
+
 -- Requirement bids
 drop policy if exists "Requirement owner and bidding seller can view bids" on public.requirement_bids;
 create policy "Requirement owner and bidding seller can view bids"
@@ -251,10 +304,7 @@ using (
   public.is_current_user_active()
   and (
     seller_id = auth.uid()
-    or exists (
-      select 1 from public.buyer_requirements br
-      where br.id = requirement_bids.requirement_id and br.buyer_id = auth.uid()
-    )
+    or public.is_owner_of_requirement(requirement_id)
   )
 );
 
@@ -293,23 +343,7 @@ with check (
 drop policy if exists "Only bid participants can read bid messages" on public.bid_messages;
 create policy "Only bid participants can read bid messages"
 on public.bid_messages for select to authenticated
-using (
-  public.is_current_user_active()
-  and exists (
-    select 1
-    from public.requirement_bids b
-    join public.buyer_requirements br on br.id = b.requirement_id
-    where b.id = bid_messages.bid_id
-      and (
-        br.buyer_id = auth.uid()
-        or (
-          b.seller_id = auth.uid()
-          and public.is_current_user_seller()
-          and public.has_active_seller_membership()
-        )
-      )
-  )
-);
+using (public.can_access_bid_conversation(bid_id));
 
 drop policy if exists "Only bid participants can send bid messages" on public.bid_messages;
 create policy "Only bid participants can send bid messages"
@@ -317,20 +351,7 @@ on public.bid_messages for insert to authenticated
 with check (
   public.is_current_user_active()
   and sender_id = auth.uid()
-  and exists (
-    select 1
-    from public.requirement_bids b
-    join public.buyer_requirements br on br.id = b.requirement_id
-    where b.id = bid_messages.bid_id
-      and (
-        br.buyer_id = auth.uid()
-        or (
-          b.seller_id = auth.uid()
-          and public.is_current_user_seller()
-          and public.has_active_seller_membership()
-        )
-      )
-  )
+  and public.can_access_bid_conversation(bid_id)
 );
 
 -- Seller membership records. The separate admin SELECT policy remains in place.
