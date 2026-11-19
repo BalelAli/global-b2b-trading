@@ -56,7 +56,7 @@ After the base setup, apply the following in order if they have not already been
 9. `supabase/admin-rfqs.sql` — admin RFQ visibility policy.
 10. `supabase/protect-buyer-privacy.sql` — removes buyer IDs from ordinary authenticated RFQ/requirement column access and provides admin-only reporting.
 11. `supabase/admin_rfq_export.sql` — admin RFQ report/export function and profile-directory policy. Apply after the privacy migration so this typed RFQ report definition is the final one.
-12. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks and replaces legacy permissive marketplace RLS policies. Run after `admin-users.sql`, `dashboard.sql`, and the admin/privacy policy migrations above. Re-run it after any later migration that recreates the affected product, RFQ or RFQ-message policies.
+12. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks and replaces legacy permissive marketplace RLS policies. It also installs buyer-ownership and bid-conversation authorization helpers so bid/bid-message policies remain compatible with the restricted `buyer_id` column grants. Run after `admin-users.sql`, `dashboard.sql`, and the admin/privacy policy migrations above. Re-run it after any later migration that recreates the affected product, RFQ or RFQ-message policies.
 13. `supabase/prevent-duplicate-membership-requests.sql` — adds a database trigger to prevent duplicate pending membership requests and overlapping active memberships. Run after `dashboard.sql` and `enforce-account-suspension.sql`.
 14. `supabase/profile-photos.sql` — private profile photo storage bucket, owner-only object policies and avatar RPC. If this migration was previously run while the bucket was public, re-run the updated file to make the bucket private.
 15. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
@@ -73,6 +73,7 @@ The migrations above are source files only until they are run in the correct Sup
 
 ### Optional repair scripts
 
+- `supabase/fix-buyer-requirement-bids-permission.sql` — older targeted repair for buyer-owned bid reads and private bid messages when the restricted `buyer_id` column caused permission errors. The current `enforce-account-suspension.sql` includes these helper policies, so re-run that current enforcement file instead of applying this repair separately.
 - `supabase/fix-membership-approval.sql` — use only if the administrator membership approval function needs repair.
 - `supabase/fix-rfq-reply-status.sql` — a targeted data update for RFQs whose status is still `new` despite having a seller reply. It changes existing rows; do not run unless that inconsistency is present.
 - `supabase/require-active-membership-for-bid-messages.sql` — a targeted policy repair for older deployments where the bid-message read/send policies do not yet require an active seller membership. The current `supabase/enforce-account-suspension.sql` already installs the same checks, so this separate repair is not needed when the current enforcement migration has been applied successfully.
