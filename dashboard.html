@@ -245,8 +245,19 @@ function scrollToDashboardHash(role){
     : role==="admin"
       ? {requirements:"adminRequirementsArea",products:"adminProductsArea",settings:"settings"}
       : {requirements:"buyerRequirementPost",products:"buyerProducts",settings:"settings"};
-  const target=$(map[key]||key);
-  if(target)target.scrollIntoView({behavior:"smooth",block:"start"});
+  const targetId=map[key]||key;
+  const scrollTarget=()=>{
+    const target=$(targetId);
+    if(target&&!target.classList.contains("hidden")){
+      target.scrollIntoView({behavior:"smooth",block:"start"});
+      return true;
+    }
+    return false;
+  };
+  scrollTarget();
+  requestAnimationFrame(()=>scrollTarget());
+  setTimeout(scrollTarget,250);
+  setTimeout(scrollTarget,700);
 }
 async function loadProfile() {
   const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status,avatar_path").eq("id",currentUser.id).single();
