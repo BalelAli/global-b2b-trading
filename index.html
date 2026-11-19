@@ -291,12 +291,16 @@ document.getElementById("googleLoginButton").addEventListener("click", async () 
       provider:"google",
       options:{
         redirectTo:window.location.origin+window.location.pathname.replace(/[^/]*$/,"dashboard.html"),
-        queryParams:{access_type:"offline",prompt:"select_account"}
+        queryParams:{access_type:"offline",prompt:"select_account"},
+        skipBrowserRedirect:true
       }
     });
     if(error)throw error;
     if(data?.url){
-      showStatus("Google sign-in link created. If this page does not redirect, check browser pop-up/navigation blocking and try again.");
+      showStatus("Redirecting to Google sign-in…");
+      window.location.assign(data.url);
+    } else {
+      throw new Error("Google sign-in did not return a redirect URL. Check the Supabase Google provider configuration.");
     }
   } catch(error){
     try{sessionStorage.removeItem("globalB2BGoogleProfile");}catch(_){}
