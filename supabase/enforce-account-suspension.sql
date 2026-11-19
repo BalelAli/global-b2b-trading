@@ -156,62 +156,56 @@ with check (
   )
 );
 
--- RFQ conversations
+-- RFQ conversations. Use a narrowly scoped SECURITY DEFINER helper to check
+-- participation because buyer privacy migration revokes table-level SELECT
+-- from rfqs and hides buyer_id via column grants. The helper returns only a
+-- boolean and does not expose RFQ details.
+create or replace function public.can_access_rfq_conversation(p_rfq_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select
+    public.is_current_user_active()
+    and exists (
+      select 1
+      from public.rfqs r
+      join public.products p on p.id = r.product_id
+      where r.id = p_rfq_id
+        and (
+          (
+            r.buyer_id = auth.uid()
+            and exists (
+              select 1 from public.profiles bp
+              where bp.id = auth.uid() and bp.role = 'buyer'
+            )
+          )
+          or (
+            p.seller_id = auth.uid()
+            and public.is_current_user_seller()
+            and public.has_active_seller_membership()
+          )
+        )
+    );
+$;
+revoke all on function public.can_access_rfq_conversation(uuid) from public;
+grant execute on function public.can_access_rfq_conversation(uuid) to authenticated;
+
 drop policy if exists "RFQ participants can read their conversation" on public.rfq_messages;
 create policy "RFQ participants can read their conversation"
 on public.rfq_messages for select to authenticated
 using (
-  public.is_current_user_active()
-  and exists (
-    select 1
-    from public.rfqs r
-    join public.products p on p.id = r.product_id
-    where r.id = rfq_messages.rfq_id
-      and (
-        (
-          r.buyer_id = auth.uid()
-          and exists (
-            select 1 from public.profiles buyer_profile
-            where buyer_profile.id = auth.uid()
-              and buyer_profile.role = 'buyer'
-          )
-        )
-        or (
-          p.seller_id = auth.uid()
-          and public.is_current_user_seller()
-          and public.has_active_seller_membership()
-        )
-      )
-  )
+  public.can_access_rfq_conversation(rfq_id)
 );
 
 drop policy if exists "RFQ participants can send messages as themselves" on public.rfq_messages;
 create policy "RFQ participants can send messages as themselves"
 on public.rfq_messages for insert to authenticated
 with check (
-  public.is_current_user_active()
-  and sender_id = auth.uid()
-  and exists (
-    select 1
-    from public.rfqs r
-    join public.products p on p.id = r.product_id
-    where r.id = rfq_messages.rfq_id
-      and (
-        (
-          r.buyer_id = auth.uid()
-          and exists (
-            select 1 from public.profiles buyer_profile
-            where buyer_profile.id = auth.uid()
-              and buyer_profile.role = 'buyer'
-          )
-        )
-        or (
-          p.seller_id = auth.uid()
-          and public.is_current_user_seller()
-          and public.has_active_seller_membership()
-        )
-      )
-  )
+  sender_id = auth.uid()
+  and public.can_access_rfq_conversation(rfq_id)
 );
 
 -- Buyer requirements. The separate admin SELECT policy remains in place.
