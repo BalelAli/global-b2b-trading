@@ -44,9 +44,12 @@ async function loadConversations(){
     const {data:rfqs,error}=await db.from("rfqs").select("id,quantity,target_price,message,status,seller_reply,seller_replied_at,created_at,products(name,currency)").order("created_at",{ascending:false});
     if(error)throw error;
     for(const r of rfqs||[]){list.push({id:"rfq:"+r.id,kind:"rfq",recordId:r.id,title:r.products?.name||"Product inquiry",label:"Buyer · Private",subTitle:"RFQ · Qty "+r.quantity+" · "+(r.status||"open"),created:r.created_at,preview:r.message||r.seller_reply||"RFQ conversation",context:"RFQ · "+(r.products?.name||"Product")+" · Qty "+r.quantity+" · Buyer target "+(r.target_price!=null?(r.products?.currency||"USD")+" "+r.target_price:"Not specified"),color:"pink",messages:[]});}
-    const {data:bids,error:bidErr}=await db.from("requirement_bids").select("id,requirement_id,price,currency,min_order_qty,lead_time_days,message,created_at,buyer_requirements(title,quantity,destination_country)").eq("seller_id",user.id).order("created_at",{ascending:false});
+    const {data:bids,error:bidErr}=await db.from("requirement_bids").select("id,requirement_id,price,currency,min_order_qty,lead_time_days,message,created_at").eq("seller_id",user.id).order("created_at",{ascending:false});
     if(bidErr)throw bidErr;
-    for(const b of bids||[]){const req=b.buyer_requirements||{};list.push({id:"bid:"+b.id,kind:"bid",recordId:b.id,title:req.title||"Buyer requirement",label:"Buyer · Private",subTitle:"Bid · "+b.currency+" "+b.price+" / unit",created:b.created_at,preview:b.message||"Bid conversation",context:"Requirement · "+(req.title||"Demand")+" · Qty "+(req.quantity||"—")+" · Destination "+(req.destination_country||"TBD")+" · Your bid "+b.currency+" "+b.price,color:"gold",messages:[]});}
+    const requirementIds=[...new Set((bids||[]).map(b=>b.requirement_id))];
+    let requirementMap=new Map();
+    if(requirementIds.length){const {data:requirements}=await db.from("buyer_requirements").select("id,title,quantity,destination_country").in("id",requirementIds);requirementMap=new Map((requirements||[]).map(r=>[r.id,r]));}
+    for(const b of bids||[]){const req=requirementMap.get(b.requirement_id)||{};list.push({id:"bid:"+b.id,kind:"bid",recordId:b.id,title:req.title||"Buyer requirement",label:"Buyer · Private",subTitle:"Bid · "+b.currency+" "+b.price+" / unit",created:b.created_at,preview:b.message||"Bid conversation",context:"Requirement · "+(req.title||"Demand")+" · Qty "+(req.quantity||"—")+" · Destination "+(req.destination_country||"TBD")+" · Your bid "+b.currency+" "+b.price,color:"gold",messages:[]});}
   }else{throw new Error("Messenger is for buyer and seller accounts only.");}
   list.sort((a,b)=>new Date(b.created||0)-new Date(a.created||0));
   for(const c of list){try{await getMessages(c);}catch(e){c.messages=[];c.loadError=e.message||"Could not load messages";}}
