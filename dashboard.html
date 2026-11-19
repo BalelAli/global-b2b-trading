@@ -239,7 +239,7 @@ $("logoutBtn").addEventListener("click", async () => {
 
 function scrollToDashboardHash(role){
   if(!location.hash)return;
-  const key=location.hash.slice(1);
+  const key=decodeURIComponent(location.hash.slice(1));
   const map=role==="seller"
     ? {requirements:"sellerRequirements",products:"sellerProductsCard",settings:"settings"}
     : role==="admin"
@@ -248,16 +248,20 @@ function scrollToDashboardHash(role){
   const targetId=map[key]||key;
   const scrollTarget=()=>{
     const target=$(targetId);
-    if(target&&!target.classList.contains("hidden")){
-      target.scrollIntoView({behavior:"smooth",block:"start"});
-      return true;
-    }
-    return false;
+    if(!target||target.classList.contains("hidden"))return false;
+    const header=document.querySelector("header");
+    const offset=(header?.getBoundingClientRect().height||0)+18;
+    const top=target.getBoundingClientRect().top+window.scrollY-offset;
+    window.scrollTo({top:Math.max(0,top),behavior:"auto"});
+    target.style.outline="3px solid #1684c7";
+    target.style.outlineOffset="4px";
+    setTimeout(()=>{target.style.outline="";target.style.outlineOffset="";},1800);
+    return true;
   };
   scrollTarget();
-  requestAnimationFrame(()=>scrollTarget());
-  setTimeout(scrollTarget,250);
-  setTimeout(scrollTarget,700);
+  requestAnimationFrame(scrollTarget);
+  setTimeout(scrollTarget,300);
+  setTimeout(scrollTarget,900);
 }
 async function loadProfile() {
   const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status,avatar_path").eq("id",currentUser.id).single();
