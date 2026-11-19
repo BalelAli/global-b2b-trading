@@ -179,7 +179,7 @@ textarea{min-height:88px;resize:vertical}
   const sub=document.getElementById("welcomeSub"), status=document.getElementById("pageStatus");
   const report=(message)=>{if(status)status.textContent=message;if(sub)sub.textContent="Dashboard startup needs attention.";};
   window.addEventListener("error",event=>{
-    if(event.message||event.filename){report("Dashboard JavaScript error: "+(event.message||"Script failed to load")+(event.filename?" ("+event.filename.split("/").pop()+")":"")+". Please refresh; if it repeats, this message helps identify the failing script.");
+    if(event.message||event.filename) report("Dashboard JavaScript error: "+(event.message||"Script failed to load")+(event.filename?" ("+event.filename.split("/").pop()+")":"")+". Please refresh; if it repeats, this message helps identify the failing script.");
   },true);
   window.addEventListener("unhandledrejection",event=>report("Dashboard startup request failed: "+(event.reason?.message||String(event.reason||"Unknown error"))));
   window.setTimeout(()=>{
