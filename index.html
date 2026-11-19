@@ -295,7 +295,7 @@ document.getElementById("googleLoginButton").addEventListener("click", async () 
       }
     });
     if(error)throw error;
-    if(data?.url && window.location.href===window.location.href){
+    if(data?.url){
       showStatus("Google sign-in link created. If this page does not redirect, check browser pop-up/navigation blocking and try again.");
     }
   } catch(error){
