@@ -252,7 +252,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select public.is_current_user_active()
     and exists (
       select 1
@@ -264,7 +264,7 @@ as $
           where p.id = auth.uid() and p.role = 'buyer'
         )
     );
-$;
+$$;
 
 revoke all on function public.is_owner_of_requirement(uuid) from public;
 grant execute on function public.is_owner_of_requirement(uuid) to authenticated;
@@ -275,7 +275,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select public.is_current_user_active()
     and exists (
       select 1
@@ -291,7 +291,7 @@ as $
           )
         )
     );
-$;
+$$;
 
 revoke all on function public.can_access_bid_conversation(uuid) from public;
 grant execute on function public.can_access_bid_conversation(uuid) to authenticated;
