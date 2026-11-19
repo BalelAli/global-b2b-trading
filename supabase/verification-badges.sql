@@ -95,3 +95,22 @@ as $$
 $$;
 revoke all on function public.get_public_verification(uuid[]) from public;
 grant execute on function public.get_public_verification(uuid[]) to anon, authenticated;
+
+-- Public buyer trust badge for open requirements: reveals only requirement ID and verified boolean.
+create or replace function public.get_open_requirement_verification(p_requirement_ids uuid[])
+returns table (requirement_id uuid, buyer_verified boolean)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select br.id, p.is_verified
+  from public.buyer_requirements br
+  join public.profiles p on p.id=br.buyer_id
+  where br.id = any(coalesce(p_requirement_ids, array[]::uuid[]))
+    and br.status='open'
+    and p.role='buyer'
+    and p.is_verified=true;
+$$;
+revoke all on function public.get_open_requirement_verification(uuid[]) from public;
+grant execute on function public.get_open_requirement_verification(uuid[]) to anon, authenticated;
