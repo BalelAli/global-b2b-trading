@@ -61,10 +61,15 @@ function renderChat(id){const c=conv(id);if(!c)return;activeId=id;$("headname").
 async function openChat(id){activeId=id;const c=conv(id);if(c){try{await getMessages(c);}catch(e){c.loadError=e.message;}renderChat(id);$("shell").classList.add("chatopen");}}
 async function sendMessage(){const box=$("message"),text=box.value.trim(),c=conv(activeId);if(!text||!c)return;const btn=$("send");btn.disabled=true;const table=c.kind==="rfq"?"rfq_messages":"bid_messages",payload=c.kind==="rfq"?{rfq_id:c.recordId,sender_id:user.id,message:text}:{bid_id:c.recordId,sender_id:user.id,message:text};const {error}=await db.from(table).insert(payload);if(error){btn.disabled=false;alert("Message not sent: "+error.message);return;}box.value="";box.style.height="auto";try{await getMessages(c);}catch(e){c.loadError=e.message;}c.preview=text;c.created=new Date().toISOString();renderChat(c.id);btn.disabled=false;}
 $("send").onclick=sendMessage;$("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}});$("message").addEventListener("input",e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";});$("search").oninput=renderList;document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("selected",t===b));renderList();});$("back").onclick=()=>$("shell").classList.remove("chatopen");
+function goDashboardSection(section){
+  const targets={buyer:{requirements:"buyerRequirementPost",products:"buyerProducts",settings:"settings"},seller:{requirements:"sellerRequirements",products:"sellerProductsCard",settings:"settings"}};
+  const id=targets[profile.role]?.[section];
+  window.location.href="./dashboard.html"+(id?"#"+id:"");
+}
 $("navHome").onclick=()=>window.location.href="./dashboard.html";
-$("navRequirements").onclick=()=>window.location.href="./dashboard.html#requirements";
-$("navProducts").onclick=()=>window.location.href="./dashboard.html#products";
-$("navSettings").onclick=()=>window.location.href="./dashboard.html#settings";
+$("navRequirements").onclick=()=>goDashboardSection("requirements");
+$("navProducts").onclick=()=>goDashboardSection("products");
+$("navSettings").onclick=()=>goDashboardSection("settings");
 $("navMessages").onclick=()=>{document.querySelectorAll(".railbtn").forEach(b=>b.classList.remove("active"));$("navMessages").classList.add("active");$("navview").classList.remove("show");$("inbox").style.display="flex";$("chat").style.display="flex";$("shell").classList.remove("chatopen");renderList();if(activeId)renderChat(activeId);};
 $("signout").onclick=async()=>{const {error}=await db.auth.signOut();if(error){alert(error.message);return;}location.href="./";};
 async function start(){const {data,error}=await db.auth.getSession();if(error)throw error;user=data.session?.user;if(!user){location.href="./#account";return;}const {data:p,error:pe}=await db.from("profiles").select("id,role,account_status").eq("id",user.id).single();if(pe)throw pe;profile=p;if(p.account_status==="suspended"){await db.auth.signOut();location.href="./#account";return;}if(!["buyer","seller"].includes(p.role)){location.href="./dashboard.html";return;}await loadConversations();}
