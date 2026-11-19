@@ -228,7 +228,8 @@ async function renderProfileAvatar(){
 }
 $("profileUploadBtn").addEventListener("click",()=>$("profilePictureInput").click());
 $("profilePictureInput").addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;if(!["image/jpeg","image/png","image/webp"].includes(file.type)){setStatus("Please choose a JPG, PNG or WebP image.");e.target.value="";return;}if(file.size>2*1024*1024){setStatus("Image must be 2 MB or smaller.");e.target.value="";return;}const btn=$("profileUploadBtn");btn.disabled=true;setStatus("Uploading profile picture…");const path=currentUser.id+"/avatar";const {error:uploadError}=await db.storage.from("profile-photos").upload(path,file,{upsert:true,contentType:file.type,cacheControl:"3600"});if(uploadError){setStatus("Could not upload profile picture: "+uploadError.message);btn.disabled=false;e.target.value="";return;}const {error:saveError}=await db.rpc("set_my_profile_avatar",{p_avatar_path:path});if(saveError){setStatus("Image uploaded but profile could not be updated: "+saveError.message);btn.disabled=false;e.target.value="";return;}currentProfile.avatar_path=path;renderProfileAvatar();setStatus("Profile picture updated successfully.");btn.disabled=false;e.target.value="";});
-$("homeBtn").addEventListener("click", () => window.top.location.href = "./");\n$("messagesBtn").addEventListener("click", () => window.top.location.href = "./messenger.html");
+$("homeBtn").addEventListener("click", () => window.top.location.href = "./");
+$("messagesBtn").addEventListener("click", () => window.top.location.href = "./messenger.html");
 $("logoutBtn").addEventListener("click", async () => {
   $("logoutBtn").disabled = true;
   const {error} = await db.auth.signOut();
