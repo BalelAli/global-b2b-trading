@@ -177,6 +177,11 @@ textarea{min-height:88px;resize:vertical}
 <script>
 const SUPABASE_URL = "https://koxsrvmzzpnzfgrufcto.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_k3IhbhoNFmrihxdrIrgAug_YbfG7cex";
+if (!window.supabase || typeof window.supabase.createClient !== "function") {
+  $("welcomeSub").textContent = "Login service failed to load. Please refresh the page.";
+  $("pageStatus").textContent = "Supabase login service is unavailable. Check your internet connection, then press Ctrl+F5.";
+  throw new Error("Supabase JavaScript library did not load.");
+}
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
 const setStatus = (msg) => { $("pageStatus").textContent = msg || ""; };
@@ -804,14 +809,23 @@ async function applyPendingGoogleProfile() {
 }
 
 async function start() {
-  const {data,error} = await db.auth.getSession();
+  $("welcomeSub").textContent = "Checking your login session…";
+  const sessionCheck = db.auth.getSession();
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Login session check timed out. Refresh the page; if it continues, the Supabase connection needs checking.")), 15000));
+  const {data,error} = await Promise.race([sessionCheck, timeout]);
   if (error) throw error;
   currentUser = data.session?.user;
   if (!currentUser) { location.href = "./#account"; return; }
+  $("welcomeSub").textContent = "Loading your profile…";
   await applyPendingGoogleProfile();
   await loadProfile();
 }
-start().catch(err => { console.error(err); setStatus(err.message || "Dashboard could not load."); });
+start().catch(err => {
+  console.error("Dashboard startup failed:", err);
+  const message = err.message || "Dashboard could not load.";
+  $("welcomeSub").textContent = "Dashboard could not load. Please refresh and try again.";
+  setStatus(message);
+});
 </script>
   <script src="./assets/dashboard-scenery.js?v=2" defer></script>
 </body>
