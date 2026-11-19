@@ -262,7 +262,7 @@ document.getElementById("resendConfirmation").addEventListener("click", async ()
 });
 
 document.getElementById("googleLoginButton").addEventListener("click", async () => {
-  if (!db) return showStatus("Google sign in is not available right now.");
+  if (!db) return showStatus("Google sign in is unavailable: the registration service did not load. Refresh the page or try again later.");
   const button=document.getElementById("googleLoginButton");
   const profile={
     role:document.getElementById("role").value,
@@ -270,13 +270,24 @@ document.getElementById("googleLoginButton").addEventListener("click", async () 
     company_name:document.getElementById("company").value.trim(),
     country:document.getElementById("country").value.trim()
   };
-  if(!profile.full_name||!profile.company_name||!profile.country){
-    return showStatus("For Google registration, first enter your full name, company name and country, then continue.");
+  const missingField = [
+    ["fullName",profile.full_name,"Full name"],
+    ["company",profile.company_name,"Company name"],
+    ["country",profile.country,"Country"]
+  ].find(([,value])=>!value);
+  if(missingField){
+    showStatus("Before Google sign-in, please fill in your "+missingField[2]+" in the Create an account form.");
+    const field=document.getElementById(missingField[0]);
+    field.focus();
+    field.scrollIntoView({behavior:"smooth",block:"center"});
+    return;
   }
-  button.disabled=true;showStatus("Connecting to Google…");
+  button.disabled=true;
+  button.textContent="Connecting to Google…";
+  showStatus("Opening Google sign-in. Please wait…");
   try {
     sessionStorage.setItem("globalB2BGoogleProfile",JSON.stringify({...profile,startedAt:Date.now()}));
-    const {error}=await db.auth.signInWithOAuth({
+    const {data,error}=await db.auth.signInWithOAuth({
       provider:"google",
       options:{
         redirectTo:window.location.origin+window.location.pathname.replace(/[^/]*$/,"dashboard.html"),
@@ -284,10 +295,15 @@ document.getElementById("googleLoginButton").addEventListener("click", async () 
       }
     });
     if(error)throw error;
+    if(data?.url && window.location.href===window.location.href){
+      showStatus("Google sign-in link created. If this page does not redirect, check browser pop-up/navigation blocking and try again.");
+    }
   } catch(error){
     try{sessionStorage.removeItem("globalB2BGoogleProfile");}catch(_){}
-    showStatus(error.message||"Google sign in failed. Please try again.");
+    console.error("Google sign-in error:",error);
+    showStatus(error.message||"Google sign-in failed. Please try again.");
     button.disabled=false;
+    button.textContent="Continue with Google";
   }
 });
 
