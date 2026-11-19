@@ -216,6 +216,13 @@ $("logoutBtn").addEventListener("click", async () => {
   location.href = "./";
 });
 
+function scrollToDashboardHash(role){
+  if(!location.hash)return;
+  const key=location.hash.slice(1);
+  const map=role==="seller"?{requirements:"sellerRequirements",products:"sellerProducts",settings:"settings"}:{requirements:"buyerRequirementPost",products:"buyerProducts",settings:"settings"};
+  const target=$(map[key]||key);
+  if(target)target.scrollIntoView({behavior:"smooth",block:"start"});
+}
 async function loadProfile() {
   const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status,avatar_path").eq("id",currentUser.id).single();
   if (error) throw new Error("Could not load your buyer/seller profile. Please check the profile table setup in Supabase. " + error.message);
