@@ -240,7 +240,11 @@ $("logoutBtn").addEventListener("click", async () => {
 function scrollToDashboardHash(role){
   if(!location.hash)return;
   const key=location.hash.slice(1);
-  const map=role==="seller"?{requirements:"sellerRequirements",products:"sellerProducts",settings:"settings"}:{requirements:"buyerRequirementPost",products:"buyerProducts",settings:"settings"};
+  const map=role==="seller"
+    ? {requirements:"sellerRequirements",products:"sellerProductsCard",settings:"settings"}
+    : role==="admin"
+      ? {requirements:"adminRequirementsArea",products:"adminProductsArea",settings:"settings"}
+      : {requirements:"buyerRequirementPost",products:"buyerProducts",settings:"settings"};
   const target=$(map[key]||key);
   if(target)target.scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -265,6 +269,7 @@ async function loadProfile() {
     $("adminProductsArea").classList.remove("hidden");
     $("adminRfqArea").classList.remove("hidden");
     await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminUserAudit(), loadAdminProducts(), loadAdminRfqs()]);
+    scrollToDashboardHash(data.role);
     return;
   }
   if (data.role === "seller") {
@@ -273,10 +278,12 @@ async function loadProfile() {
     await loadSellerMembership();
     await loadSellerData();
     await loadOpenRequirements();
+    scrollToDashboardHash(data.role);
   } else if (data.role === "buyer") {
     $("buyerArea").classList.remove("hidden");
     await loadBuyerData();
     await loadMyRequirements();
+    scrollToDashboardHash(data.role);
   } else {
     throw new Error("This account has an unsupported marketplace role.");
   }
