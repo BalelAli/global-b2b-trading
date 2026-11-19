@@ -270,38 +270,29 @@ document.getElementById("googleLoginButton").addEventListener("click", async () 
     company_name:document.getElementById("company").value.trim(),
     country:document.getElementById("country").value.trim()
   };
-  const missingField = [
-    ["fullName",profile.full_name,"Full name"],
-    ["company",profile.company_name,"Company name"],
-    ["country",profile.country,"Country"]
-  ].find(([,value])=>!value);
-  if(missingField){
-    showStatus("Before Google sign-in, please fill in your "+missingField[2]+" in the Create an account form.");
-    const field=document.getElementById(missingField[0]);
-    field.focus();
-    field.scrollIntoView({behavior:"smooth",block:"center"});
+  const hasAnyProfileField=profile.full_name||profile.company_name||profile.country;
+  const hasCompleteProfile=profile.full_name&&profile.company_name&&profile.country;
+  if(hasAnyProfileField&&!hasCompleteProfile){
+    showStatus("To register a new Google account, please complete Full name, Company name and Country. For an existing account, clear these fields and continue.");
     return;
   }
   button.disabled=true;
   button.textContent="Connecting to Google…";
   showStatus("Opening Google sign-in. Please wait…");
   try {
-    sessionStorage.setItem("globalB2BGoogleProfile",JSON.stringify({...profile,startedAt:Date.now()}));
-    const {data,error}=await db.auth.signInWithOAuth({
+    if(hasCompleteProfile){
+      sessionStorage.setItem("globalB2BGoogleProfile",JSON.stringify({...profile,startedAt:Date.now()}));
+    } else {
+      sessionStorage.removeItem("globalB2BGoogleProfile");
+    }
+    const {error}=await db.auth.signInWithOAuth({
       provider:"google",
       options:{
         redirectTo:window.location.origin+window.location.pathname.replace(/[^/]*$/,"dashboard.html"),
-        queryParams:{access_type:"offline",prompt:"select_account"},
-        skipBrowserRedirect:true
+        queryParams:{access_type:"offline",prompt:"select_account"}
       }
     });
     if(error)throw error;
-    if(data?.url){
-      showStatus("Redirecting to Google sign-in…");
-      window.location.assign(data.url);
-    } else {
-      throw new Error("Google sign-in did not return a redirect URL. Check the Supabase Google provider configuration.");
-    }
   } catch(error){
     try{sessionStorage.removeItem("globalB2BGoogleProfile");}catch(_){}
     console.error("Google sign-in error:",error);
@@ -310,7 +301,6 @@ document.getElementById("googleLoginButton").addEventListener("click", async () 
     button.textContent="Continue with Google";
   }
 });
-
 document.getElementById("login").addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!db) return showStatus("Sign in is not active yet. Complete the free Supabase setup in README.md.");
