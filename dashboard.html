@@ -380,7 +380,7 @@ async function loadAdminRequirements() {
     const rows=data.filter(r=>(!status||r.status===status)&&(!category||r.category===category)&&(!term||[r.title,r.category,r.description,r.destination_country,r.currency].join(" ").toLowerCase().includes(term)));
     if(!rows.length){root.innerHTML='<div class="empty">No buyer requirements match these filters.</div>';return;}
     root.innerHTML='<p class="muted">Showing '+rows.length+' of '+data.length+' requirements</p>'+rows.map(r=>
-      '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(r.title)+'</h3><span class="pill" style="'+(r.status==="open"?'':'background:#fcebea;color:#9b2c2c')+'">'+esc(r.status.toUpperCase())+'</span></div>'+
+      '<div class="product"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h3>'+esc(r.title)+(verifiedRequirementIds.has(r.id)?' <span class="pill" style="background:#e5f7ee;color:#137447">✓ VERIFIED BUYER</span>':'')+'</h3><span class="pill" style="'+(r.status==="open"?'':'background:#fcebea;color:#9b2c2c')+'">'+esc(r.status.toUpperCase())+'</span></div>'+
       '<p class="muted">'+esc(r.category)+' · Quantity '+esc(r.quantity)+' · Destination '+esc(r.destination_country||"Not specified")+'</p>'+
       '<p>'+esc(r.description||"No extra specifications")+'</p>'+
       '<p><b>Target price:</b> '+(r.target_price!==null?esc(r.currency)+' '+esc(r.target_price)+' / unit':"Open to offers")+'</p>'+
@@ -807,6 +807,8 @@ function requirementCategory(value) {
 async function loadOpenRequirements() {
   const {data,error}=await db.from("buyer_requirements").select("id,title,category,description,quantity,target_price,currency,destination_country,created_at").eq("status","open").order("created_at",{ascending:false});
   if(error) throw new Error("Could not load open buyer requirements: "+error.message);
+  let verifiedRequirementIds=new Set();
+  try { const verification=await db.rpc("get_open_requirement_verification",{p_requirement_ids:(data||[]).map(r=>r.id)}); verifiedRequirementIds=new Set((verification.data||[]).filter(v=>v.buyer_verified).map(v=>v.requirement_id)); } catch(_e){}
   const stats=REQUIREMENT_CATEGORIES.map(category=>{
     const rows=data.filter(r=>requirementCategory(r.category)===category);
     return {category,requirements:rows.length};
