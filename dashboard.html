@@ -175,16 +175,16 @@ textarea{min-height:88px;resize:vertical}
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const $ = (id) => document.getElementById(id);
+const setStatus = (msg) => { $("pageStatus").textContent = msg || ""; };
 const SUPABASE_URL = "https://koxsrvmzzpnzfgrufcto.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_k3IhbhoNFmrihxdrIrgAug_YbfG7cex";
 if (!window.supabase || typeof window.supabase.createClient !== "function") {
   $("welcomeSub").textContent = "Login service failed to load. Please refresh the page.";
-  $("pageStatus").textContent = "Supabase login service is unavailable. Check your internet connection, then press Ctrl+F5.";
+  setStatus("Supabase JavaScript library is unavailable. Check your internet connection, then press Ctrl+F5.");
   throw new Error("Supabase JavaScript library did not load.");
 }
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const $ = (id) => document.getElementById(id);
-const setStatus = (msg) => { $("pageStatus").textContent = msg || ""; };
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let currentUser = null, currentProfile = null, membershipActive = false, membershipPending = false;
 async function renderProfileAvatar(){
