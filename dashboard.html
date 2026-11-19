@@ -99,6 +99,15 @@ textarea{min-height:88px;resize:vertical}
       <div id="adminUserAuditList">Loading account history…</div>
     </article>
   </section>
+  <section id="adminVerificationArea" class="hidden">
+    <article class="card">
+      <h2>Admin — Buyer & Seller Verification</h2>
+      <p class="muted">Manually verify a buyer or seller after reviewing their business information. Verified badges are public; private email, phone and payment information remain hidden.</p>
+      <label for="adminVerificationSearch">Search accounts</label>
+      <input id="adminVerificationSearch" type="search" placeholder="Search name, company, country or account ID…">
+      <div id="adminVerificationList">Loading verification accounts…</div>
+    </article>
+  </section>
   <section id="adminProductsArea" class="hidden">
     <article class="card">
       <h2>Admin — Seller Products Management</h2>
@@ -264,7 +273,7 @@ function scrollToDashboardHash(role){
   setTimeout(scrollTarget,900);
 }
 async function loadProfile() {
-  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status,avatar_path").eq("id",currentUser.id).single();
+  const {data,error} = await db.from("profiles").select("id,role,full_name,company_name,country,account_status,avatar_path,is_verified").eq("id",currentUser.id).single();
   if (error) throw new Error("Could not load your buyer/seller profile. Please check the profile table setup in Supabase. " + error.message);
   currentProfile = data;
   if (data.role !== "admin" && data.account_status === "suspended") {
@@ -274,7 +283,7 @@ async function loadProfile() {
     return;
   }
   $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
-  $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase();
+  $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase() + (data.is_verified ? " · ✓ VERIFIED" : "");
   if (data.role === "buyer" || data.role === "seller" || data.role === "admin") { $("settings").classList.remove("hidden"); renderProfileAvatar(); }
   if (data.role === "admin") { $("messagesBtn").classList.add("hidden");
     $("adminMembershipArea").classList.remove("hidden");
@@ -283,8 +292,9 @@ async function loadProfile() {
     $("adminUsersArea").classList.remove("hidden");
     $("adminProductsArea").classList.remove("hidden");
     $("adminRfqArea").classList.remove("hidden");
+    $("adminVerificationArea").classList.remove("hidden");
     scrollToDashboardHash(data.role);
-    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminUserAudit(), loadAdminProducts(), loadAdminRfqs()]);
+    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminUserAudit(), loadAdminProducts(), loadAdminRfqs(), loadAdminVerification()]);
     scrollToDashboardHash(data.role);
     return;
   }
@@ -426,6 +436,35 @@ async function loadAdminSellers() {
   render();
 }
 
+
+async function loadAdminVerification(){
+  const root=$("adminVerificationList");
+  root.textContent="Loading verification accounts…";
+  const {data,error}=await db.rpc("admin_list_verification_users");
+  if(error){root.textContent="Verification setup is not installed yet. Run supabase/verification-badges.sql in Supabase SQL Editor. Details: "+error.message;return;}
+  const users=data||[];
+  const render=()=>{
+    const term=$("adminVerificationSearch").value.trim().toLowerCase();
+    const rows=users.filter(p=>[p.full_name,p.company_name,p.country,p.role,p.id].join(" ").toLowerCase().includes(term));
+    if(!rows.length){root.innerHTML='<div class="empty">No accounts match this search.</div>';return;}
+    root.innerHTML='<p class="muted">Showing '+rows.length+' of '+users.length+' accounts</p>'+rows.map(p=>
+      '<div class="product"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between"><h3>'+esc(p.full_name||"Unnamed user")+'</h3><span class="pill" style="'+(p.is_verified?'background:#e5f7ee;color:#137447':'background:#eef2f6;color:#526477')+'">'+(p.is_verified?'✓ VERIFIED':'NOT VERIFIED')+'</span></div><p><b>Type:</b> '+esc(p.role.toUpperCase())+' · <b>Company:</b> '+esc(p.company_name||"Not provided")+' · <b>Country:</b> '+esc(p.country||"Not provided")+'</p><p class="muted">Account status: '+esc(p.account_status||"active")+' · ID: '+esc(p.id)+'</p><button type="button" class="'+(p.is_verified?'secondary':'')+'" data-verify-user="'+esc(p.id)+'" data-verify-next="'+(!p.is_verified)+'">'+(p.is_verified?'Remove verification':'Mark as verified')+'</button></div>'
+    ).join("");
+  };
+  $("adminVerificationSearch").oninput=render;
+  root.onclick=async e=>{
+    const btn=e.target.closest("[data-verify-user]");
+    if(!btn)return;
+    const next=btn.dataset.verifyNext==="true";
+    if(!confirm((next?"Verify ":"Remove verification from ")+(next?"this account?":"this account?")))return;
+    btn.disabled=true;
+    const {error:updateError}=await db.rpc("admin_set_verification",{p_user_id:btn.dataset.verifyUser,p_verified:next});
+    if(updateError){setStatus("Could not update verification: "+updateError.message);btn.disabled=false;return;}
+    setStatus(next?"Account marked verified.":"Verification removed.");
+    await loadAdminVerification();
+  };
+  render();
+}
 
 async function loadAdminUsers() {
   const root=$("adminUsersList");
