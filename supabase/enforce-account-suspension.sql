@@ -166,7 +166,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select
     public.is_current_user_active()
     and exists (
@@ -189,7 +189,7 @@ as $
           )
         )
     );
-$;
+$$;
 revoke all on function public.can_access_rfq_conversation(uuid) from public;
 grant execute on function public.can_access_rfq_conversation(uuid) to authenticated;
 
