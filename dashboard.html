@@ -173,6 +173,21 @@ textarea{min-height:88px;resize:vertical}
     <article class="card" id="buyerRequirementPost"><h2>Post a requirement for all sellers</h2><p class="muted">Publish what you need. All sellers can view it and submit private bids. Only you can see the bids received.</p><form id="requirementForm"><label for="reqTitle">Product / requirement title</label><input id="reqTitle" required maxlength="160" placeholder="e.g. 1,000 cotton T-shirts"><div class="formgrid"><div><label for="reqCategory">Industry category</label><select id="reqCategory" required><option value="RMG & Textile">RMG & Textile</option><option value="Industrial & Machinery">Industrial & Machinery</option><option value="Electronics">Electronics</option><option value="Agriculture & Food">Agriculture & Food</option><option value="Leather & Footwear">Leather & Footwear</option><option value="Chemicals">Chemicals</option><option value="Construction">Construction</option><option value="Packaging">Packaging</option><option value="Home & Furniture">Home & Furniture</option><option value="Medical & Healthcare">Medical & Healthcare</option><option value="Automotive">Automotive</option><option value="Plastic & Rubber">Plastic & Rubber</option><option value="Other">Other</option></select></div><div><label for="reqQty">Quantity</label><input id="reqQty" type="number" min="1" required placeholder="1000"></div></div><label for="reqDescription">Specifications / details</label><textarea id="reqDescription" maxlength="2000" placeholder="Material, sizes, quality, delivery details…"></textarea><div class="formgrid"><div><label for="reqTarget">Target unit price (optional)</label><input id="reqTarget" type="number" min="0" step="0.01" placeholder="0.95"></div><div><label for="reqCurrency">Currency</label><select id="reqCurrency"><option>USD</option><option>EUR</option><option>BDT</option><option>GBP</option></select></div></div><label for="reqDestination">Delivery country</label><input id="reqDestination" maxlength="80" placeholder="e.g. Bangladesh"><button type="submit" id="postRequirementBtn" style="margin-top:14px">Publish requirement to all sellers</button></form></article><article class="card"><h2>My posted requirements & seller bids</h2><div id="buyerRequirements">Loading…</div></article>
   </section>
 </main>
+<script>
+// Independent startup watchdog: reports failures even if the main dashboard script fails to parse.
+(()=>{
+  const sub=document.getElementById("welcomeSub"), status=document.getElementById("pageStatus");
+  const report=(message)=>{if(status)status.textContent=message;if(sub)sub.textContent="Dashboard startup needs attention.";};
+  window.addEventListener("error",event=>{
+    if(event.message||event.filename){report("Dashboard JavaScript error: "+(event.message||"Script failed to load")+(event.filename?" ("+event.filename.split("/").pop()+")":"")+". Please refresh; if it repeats, this message helps identify the failing script.");
+  },true);
+  window.addEventListener("unhandledrejection",event=>report("Dashboard startup request failed: "+(event.reason?.message||String(event.reason||"Unknown error"))));
+  window.setTimeout(()=>{
+    if(sub&&/Loading your account|Checking your login session|Loading your profile/i.test(sub.textContent))
+      report("Dashboard startup is taking too long. A script or Supabase request may be blocked. Try Ctrl+F5 once; this page will now show startup errors when detected.");
+  },12000);
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $ = (id) => document.getElementById(id);
