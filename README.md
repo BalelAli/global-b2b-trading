@@ -60,6 +60,7 @@ After the base setup, apply the following in order if they have not already been
 13. `supabase/prevent-duplicate-membership-requests.sql` — adds a database trigger to prevent duplicate pending membership requests and overlapping active memberships. Run after `dashboard.sql` and `enforce-account-suspension.sql`.
 14. `supabase/profile-photos.sql` — private profile photo storage bucket, owner-only object policies and avatar RPC. If this migration was previously run while the bucket was public, re-run the updated file to make the bucket private.
 15. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
+16. `supabase/verification-badges.sql` — adds the admin-managed verification flags, audit log and limited public badge lookup RPCs. Apply it so the Admin verification panel and public badge displays work.
 
 The migrations above are source files only until they are run in the correct Supabase project.
 
