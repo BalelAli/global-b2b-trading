@@ -33,7 +33,8 @@ security definer
 set search_path = ''
 as $$
 begin
-  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com' then
+  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com'
+     or not exists (select 1 from public.profiles a where a.id = auth.uid() and a.role = 'admin') then
     raise exception 'Not authorized to manage verification badges';
   end if;
   return query
@@ -44,7 +45,7 @@ begin
     order by p.created_at desc;
 end;
 $$;
-revoke all on function public.admin_list_verification_users() from public;
+revoke all on function public.admin_list_verification_users() from public, anon;
 grant execute on function public.admin_list_verification_users() to authenticated;
 
 create or replace function public.admin_set_verification(
@@ -61,7 +62,8 @@ declare
   v_actor text;
 begin
   v_actor := lower(coalesce(auth.jwt() ->> 'email', ''));
-  if v_actor <> 'balelali953@gmail.com' then
+  if v_actor <> 'balelali953@gmail.com'
+     or not exists (select 1 from public.profiles a where a.id = auth.uid() and a.role = 'admin') then
     raise exception 'Not authorized to change verification';
   end if;
   select p.is_verified into v_old
@@ -76,7 +78,7 @@ begin
   end if;
 end;
 $$;
-revoke all on function public.admin_set_verification(uuid,boolean) from public;
+revoke all on function public.admin_set_verification(uuid,boolean) from public, anon;
 grant execute on function public.admin_set_verification(uuid,boolean) to authenticated;
 
 -- Public badge lookup exposes only the verification boolean and role for supplied IDs.
