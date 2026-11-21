@@ -43,7 +43,10 @@ drop policy if exists "Admin can view all marketplace users" on public.profiles;
 drop policy if exists "Admin can view all seller profiles" on public.profiles;
 create policy "Admin can view all seller profiles"
 on public.profiles for select to authenticated
-using (public.is_trusted_marketplace_admin());
+using (
+  public.is_trusted_marketplace_admin()
+  and role = 'seller'
+);
 
 drop policy if exists "Admin can read buyer and seller directory" on public.profiles;
 create policy "Admin can read buyer and seller directory"
