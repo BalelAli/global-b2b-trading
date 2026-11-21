@@ -36,6 +36,10 @@ create policy "Admin can view all quotation requests"
 on public.rfqs for select to authenticated
 using (public.is_trusted_marketplace_admin());
 
+-- Remove the older admin-users policy that queried profiles from a profiles
+-- policy and could trigger recursive RLS evaluation.
+drop policy if exists "Admin can view all marketplace users" on public.profiles;
+
 drop policy if exists "Admin can view all seller profiles" on public.profiles;
 create policy "Admin can view all seller profiles"
 on public.profiles for select to authenticated
@@ -44,7 +48,10 @@ using (public.is_trusted_marketplace_admin());
 drop policy if exists "Admin can read buyer and seller directory" on public.profiles;
 create policy "Admin can read buyer and seller directory"
 on public.profiles for select to authenticated
-using (public.is_trusted_marketplace_admin());
+using (
+  public.is_trusted_marketplace_admin()
+  and role in ('buyer', 'seller')
+);
 
 -- Admin-only product status RPC.
 create or replace function public.admin_set_product_status(p_product_id uuid, p_status text)
