@@ -20,7 +20,8 @@ security definer
 set search_path = ''
 as $$
 begin
-  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com' then
+  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com'
+     or not exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') then
     raise exception 'Not authorized to view seller membership payments';
   end if;
 
