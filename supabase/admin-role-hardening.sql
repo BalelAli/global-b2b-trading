@@ -1,64 +1,50 @@
 -- Global B2B Trading: harden legacy admin-only policies and RPCs
--- Adds an explicit profiles.role='admin' check alongside the trusted email.
+-- Uses a SECURITY DEFINER helper to avoid recursive profiles RLS in admin profile policies.
 -- Safe to re-run. No marketplace data is changed or deleted.
 
 begin;
 
--- Admin-only read policies: require BOTH trusted email and admin profile role.
+create or replace function public.is_trusted_marketplace_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
+    and exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'admin'
+    );
+$$;
+revoke all on function public.is_trusted_marketplace_admin() from public, anon;
+grant execute on function public.is_trusted_marketplace_admin() to authenticated;
+
+-- Admin-only read policies. The helper avoids recursive profiles-policy evaluation.
 drop policy if exists "Admin can view all seller products" on public.products;
 create policy "Admin can view all seller products"
 on public.products for select to authenticated
-using (
-  lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
-  and exists (
-    select 1 from public.profiles a
-    where a.id = auth.uid() and a.role = 'admin'
-  )
-);
+using (public.is_trusted_marketplace_admin());
 
 drop policy if exists "Admin can view all buyer requirements" on public.buyer_requirements;
 create policy "Admin can view all buyer requirements"
 on public.buyer_requirements for select to authenticated
-using (
-  lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
-  and exists (
-    select 1 from public.profiles a
-    where a.id = auth.uid() and a.role = 'admin'
-  )
-);
+using (public.is_trusted_marketplace_admin());
 
 drop policy if exists "Admin can view all quotation requests" on public.rfqs;
 create policy "Admin can view all quotation requests"
 on public.rfqs for select to authenticated
-using (
-  lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
-  and exists (
-    select 1 from public.profiles a
-    where a.id = auth.uid() and a.role = 'admin'
-  )
-);
+using (public.is_trusted_marketplace_admin());
 
 drop policy if exists "Admin can view all seller profiles" on public.profiles;
 create policy "Admin can view all seller profiles"
 on public.profiles for select to authenticated
-using (
-  lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
-  and exists (
-    select 1 from public.profiles a
-    where a.id = auth.uid() and a.role = 'admin'
-  )
-);
+using (public.is_trusted_marketplace_admin());
 
 drop policy if exists "Admin can read buyer and seller directory" on public.profiles;
 create policy "Admin can read buyer and seller directory"
 on public.profiles for select to authenticated
-using (
-  lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
-  and exists (
-    select 1 from public.profiles a
-    where a.id = auth.uid() and a.role = 'admin'
-  )
-);
+using (public.is_trusted_marketplace_admin());
 
 -- Admin-only product status RPC.
 create or replace function public.admin_set_product_status(p_product_id uuid, p_status text)
@@ -66,8 +52,7 @@ returns void
 language plpgsql security definer set search_path = ''
 as $$
 begin
-  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com'
-     or not exists (select 1 from public.profiles a where a.id = auth.uid() and a.role = 'admin') then
+  if not public.is_trusted_marketplace_admin() then
     raise exception 'Not authorized to manage seller products';
   end if;
   if p_status not in ('active', 'inactive') then
@@ -86,8 +71,7 @@ returns void
 language plpgsql security definer set search_path = ''
 as $$
 begin
-  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com'
-     or not exists (select 1 from public.profiles a where a.id = auth.uid() and a.role = 'admin') then
+  if not public.is_trusted_marketplace_admin() then
     raise exception 'Not authorized to manage buyer requirements';
   end if;
   if p_status not in ('open', 'closed') then
@@ -110,8 +94,7 @@ returns table (
 language plpgsql stable security definer set search_path = ''
 as $$
 begin
-  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com'
-     or not exists (select 1 from public.profiles a where a.id = auth.uid() and a.role = 'admin') then
+  if not public.is_trusted_marketplace_admin() then
     raise exception 'Not authorized to view RFQ reports';
   end if;
   return query
@@ -135,8 +118,7 @@ returns table (
 language plpgsql stable security definer set search_path = ''
 as $$
 begin
-  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com'
-     or not exists (select 1 from public.profiles a where a.id = auth.uid() and a.role = 'admin') then
+  if not public.is_trusted_marketplace_admin() then
     raise exception 'Not authorized to view marketplace contact details';
   end if;
   return query
