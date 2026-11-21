@@ -75,6 +75,16 @@ After the base setup, apply these migrations in order if they are still missing 
 20. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
 
 The migrations above are source files only until they are run in the correct Supabase project. Do not assume that a file in GitHub has already been executed in Supabase.
+**Important re-run warning:** Do not re-run `schema.sql` on an existing database. Although `dashboard.sql` uses `IF NOT EXISTS`, it recreates baseline policies without the later membership and suspension restrictions. If you must re-run `dashboard.sql`, immediately re-run the current `enforce-account-suspension.sql` afterward. Do not leave `dashboard.sql` as the last policy migration.
+
+**Important admin-hardening order:** The legacy files `admin-contact-directory.sql`, `admin-products.sql`, `admin-requirements.sql`, `admin-rfqs.sql` and `admin_rfq_export.sql` install initial admin policies/RPCs. Run `admin-role-hardening.sql` after those files. If any of those legacy files is run again later, re-run `admin-role-hardening.sql` afterward; then re-run the helper-dependent files `admin-membership-review.sql`, `admin-sellers.sql` and `admin-membership-payment-hardening.sql` as needed. Do not run helper-dependent files before `admin-role-hardening.sql`.
+
+**Important policy ordering rule:** `enforce-account-suspension.sql` is the final policy-hardening step for products, RFQs and RFQ messages. Do not run an older policy-creation script after it unless you then re-run this enforcement migration. GitHub commits do not execute SQL in Supabase; each required migration must still be applied in the Supabase SQL Editor. Apply only missing migrations in the documented order; do not run every file blindly or run a data-repair script unless the specific issue exists.
+
+**RFQ role-check update:** On an existing Supabase project, re-run the current `enforce-account-suspension.sql` from this repository to apply the buyer-role checks for RFQ creation and private RFQ conversations. This migration is safe to re-run and does not change existing marketplace records. Do not re-run `dashboard.sql` on an existing database.
+
+**Profile-photo privacy update:** Re-run the current `profile-photos.sql` on an existing project to change the `profile-photos` bucket from public to private. The dashboard uses a short-lived signed URL to display the signed-in user's own uploaded photo. This migration is safe to re-run.
+
 ### Optional repair scripts
 
 - `supabase/fix-buyer-requirement-bids-permission.sql` — older targeted repair for buyer-owned bid reads and private bid messages when the restricted `buyer_id` column caused permission errors. The current `enforce-account-suspension.sql` includes these helper policies, so re-run that current enforcement file instead of applying this repair separately.
