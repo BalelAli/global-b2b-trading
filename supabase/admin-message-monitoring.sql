@@ -66,7 +66,7 @@ begin
   left join public.profiles sp on sp.id=b.seller_id
   left join auth.users bu on bu.id=br.buyer_id
   left join auth.users su on su.id=b.seller_id
-  order by latest_at desc;
+  order by 14 desc;
 end;
 $$;
 
