@@ -131,6 +131,19 @@ textarea{min-height:88px;resize:vertical}
       <div id="adminRfqList">Loading quotation requests…</div>
     </article>
   </section>
+  <section id="adminMessagesArea" class="hidden">
+    <article class="card">
+      <h2>Admin — Message Monitoring</h2>
+      <p class="muted">Admin-only review of private RFQ and buyer-requirement bid conversations for platform safety, disputes and support. Buyer and seller messages are not publicly visible.</p>
+      <div class="formgrid">
+        <div><label for="adminMessageSearch">Search conversations</label><input id="adminMessageSearch" type="search" placeholder="Search names, companies, emails, product or requirement…"></div>
+        <div><label for="adminMessageType">Conversation type</label><select id="adminMessageType"><option value="">All types</option><option value="rfq">RFQ</option><option value="bid">Buyer requirement bids</option></select></div>
+      </div>
+      <p><button type="button" class="secondary" id="adminMessagesRefresh">Refresh conversations</button></p>
+      <div id="adminMessageConversations">Loading conversations…</div>
+      <div id="adminMessageHistory" class="product" style="margin-top:16px">Select a conversation to review its message history.</div>
+    </article>
+  </section>
   <section id="sellerMembershipArea" class="hidden">
     <article class="card">
       <h2>Seller Membership</h2>
@@ -297,8 +310,9 @@ async function loadProfile() {
     $("adminProductsArea").classList.remove("hidden");
     $("adminRfqArea").classList.remove("hidden");
     $("adminVerificationArea").classList.remove("hidden");
+    $("adminMessagesArea").classList.remove("hidden");
     scrollToDashboardHash(data.role);
-    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminUserAudit(), loadAdminProducts(), loadAdminRfqs(), loadAdminVerification()]);
+    await Promise.all([loadAdminMemberships(), loadAdminRequirements(), loadAdminSellers(), loadAdminUsers(), loadAdminUserAudit(), loadAdminProducts(), loadAdminRfqs(), loadAdminVerification(), loadAdminMessageMonitoring()]);
     scrollToDashboardHash(data.role);
     return;
   }
@@ -570,6 +584,40 @@ async function loadAdminProducts() {
   };
   render();
 }
+
+let adminMessageRows=[];
+async function loadAdminMessageMonitoring(){
+  const root=$("adminMessageConversations");
+  root.textContent="Loading message conversations…";
+  $("adminMessageHistory").textContent="Select a conversation to review its message history.";
+  const {data,error}=await db.rpc("admin_list_message_conversations");
+  if(error){root.textContent="Could not load message monitoring. Apply supabase/admin-message-monitoring.sql in Supabase first. "+error.message;return;}
+  adminMessageRows=data||[];
+  const render=()=>{
+    const term=$("adminMessageSearch").value.trim().toLowerCase();
+    const type=$("adminMessageType").value;
+    const rows=adminMessageRows.filter(row=>(!type||row.conversation_type===type)&&(!term||[row.conversation_title,row.buyer_name,row.buyer_company,row.buyer_email,row.seller_name,row.seller_company,row.seller_email,row.latest_message].join(" ").toLowerCase().includes(term)));
+    if(!rows.length){root.innerHTML='<div class="empty">No conversations match your search.</div>';return;}
+    root.innerHTML='<p class="muted">Showing '+rows.length+' of '+adminMessageRows.length+' conversations</p>'+rows.map(row=>'<div class="product" style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h3>'+esc(row.conversation_title||"Conversation")+'</h3><span class="pill">'+(row.conversation_type==="rfq"?"RFQ":"BID")+'</span></div><p><b>Buyer:</b> '+esc(row.buyer_name)+' · '+esc(row.buyer_company||"")+' · '+esc(row.buyer_email||"")+'</p><p><b>Seller:</b> '+esc(row.seller_name)+' · '+esc(row.seller_company||"")+' · '+esc(row.seller_email||"")+'</p><p class="muted">'+esc(row.message_count)+' messages · Last message '+new Date(row.latest_at).toLocaleString()+'</p><p>'+esc(row.latest_message||"")+'</p><button type="button" class="secondary" data-admin-message-type="'+esc(row.conversation_type)+'" data-admin-message-id="'+esc(row.record_id)+'">View message history</button></div>').join("");
+  };
+  $("adminMessageSearch").oninput=render;
+  $("adminMessageType").onchange=render;
+  root.onclick=async event=>{
+    const button=event.target.closest("[data-admin-message-id]");
+    if(!button)return;
+    button.disabled=true;
+    const type=button.dataset.adminMessageType,id=button.dataset.adminMessageId;
+    const row=adminMessageRows.find(r=>r.conversation_type===type&&r.record_id===id);
+    const history=$("adminMessageHistory");
+    history.textContent="Loading private message history…";
+    const {data:messages,error:historyError}=await db.rpc("admin_get_message_history",{p_conversation_type:type,p_record_id:id});
+    button.disabled=false;
+    if(historyError){history.textContent="Could not load message history: "+historyError.message;return;}
+    history.innerHTML='<h3>Conversation history — '+esc(row?.conversation_title||"")+'</h3><p><b>Buyer:</b> '+esc(row?.buyer_name||"")+' · '+esc(row?.buyer_email||"")+'<br><b>Seller:</b> '+esc(row?.seller_name||"")+' · '+esc(row?.seller_email||"")+'</p>'+(messages&&messages.length?messages.map(m=>'<div style="border:1px solid #d9e2ec;border-radius:10px;padding:10px;margin:9px 0;background:#f7fbff"><b>'+esc(m.sender_name)+'</b> · '+esc(m.sender_company||"")+' · '+esc(m.sender_email||"")+'<p style="margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.message)+'</p><small class="muted">'+new Date(m.created_at).toLocaleString()+'</small></div>':'<p class="muted">No messages in this conversation.</p>');
+  };
+  render();
+}
+$("adminMessagesRefresh").onclick=loadAdminMessageMonitoring;
 
 async function loadAdminRfqs() {
   const root=$("adminRfqList");
