@@ -21,7 +21,7 @@ Global B2B Trading is an early-stage international B2B marketplace. The public s
 - Seller dashboard: publish and manage product listings, review product RFQs, exchange private RFQ messages with the relevant buyer, browse open buyer requirements, submit bids and privately message the buyer.
 - Seller bidding and private bid messaging require an active, administrator-approved membership.
 - Seller membership plans: **$10 monthly** or **$100 yearly**.
-- Admin dashboard: review membership payments, manage buyer requirements, sellers, users and products, review RFQs, export RFQ reports and view private buyer/seller contact details.
+- Admin dashboard: review membership payments, manage buyer requirements, sellers, users and products, review RFQs, export RFQ reports and view private buyer/seller contact details. Admin Message Monitoring can review private RFQ and requirement-bid conversation participants and histories after its SQL migration is applied.
 - Profile photo upload for signed-in marketplace users (JPG, PNG or WebP; maximum 2 MB). Uploaded photos are stored in a private bucket and displayed to their owner with short-lived signed URLs.
 
 ## Payment status — important
@@ -61,6 +61,7 @@ After the base setup, apply the following in order if they have not already been
 14. `supabase/profile-photos.sql` — private profile photo storage bucket, owner-only object policies and avatar RPC. If this migration was previously run while the bucket was public, re-run the updated file to make the bucket private.
 15. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
 16. `supabase/verification-badges.sql` — adds the admin-managed verification flags, audit log and limited public badge lookup RPCs. Apply it so the Admin verification panel and public badge displays work.
+17. `supabase/admin-message-monitoring.sql` — adds administrator-only read-only RPCs for message conversation lists and private RFQ/bid chat history. Apply it to enable the Admin Message Monitoring panel.
 
 The migrations above are source files only until they are run in the correct Supabase project.
 
