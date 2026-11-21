@@ -105,7 +105,7 @@ textarea{min-height:88px;resize:vertical}
       <p class="muted">Manually verify a buyer or seller after reviewing their business information. Verified badges are public; private email, phone and payment information remain hidden.</p>
       <label for="adminVerificationSearch">Search accounts</label>
       <input id="adminVerificationSearch" type="search" placeholder="Search name, company, country or account ID…">
-      <div id="adminVerificationList">Loading verification accounts…</div>
+      <div id="adminVerificationList">Loading verification accounts…</div><h3 style="margin-top:22px">Verification change history</h3><p class="muted">Latest 20 verification and removal actions, visible to administrators only.</p><div id="adminVerificationAuditList">Loading verification history…</div>
     </article>
   </section>
   <section id="adminProductsArea" class="hidden">
@@ -456,11 +456,15 @@ async function loadAdminSellers() {
 
 
 async function loadAdminVerification(){
-  const root=$("adminVerificationList");
+  const root=$("adminVerificationList"),auditRoot=$("adminVerificationAuditList");
   root.textContent="Loading verification accounts…";
-  const {data,error}=await db.rpc("admin_list_verification_users");
-  if(error){root.textContent="Verification setup is not installed yet. Run supabase/verification-badges.sql in Supabase SQL Editor. Details: "+error.message;return;}
-  const users=data||[];
+  auditRoot.textContent="Loading verification history…";
+  const [usersResult,auditResult]=await Promise.all([
+    db.rpc("admin_list_verification_users"),
+    db.rpc("admin_list_verification_audit")
+  ]);
+  if(usersResult.error){root.textContent="Could not load verification accounts. Apply supabase/verification-audit-and-security.sql. Details: "+usersResult.error.message;return;}
+  const users=usersResult.data||[];
   const render=()=>{
     const term=$("adminVerificationSearch").value.trim().toLowerCase();
     const rows=users.filter(p=>[p.full_name,p.company_name,p.country,p.role,p.id].join(" ").toLowerCase().includes(term));
@@ -469,12 +473,17 @@ async function loadAdminVerification(){
       '<div class="product"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between"><h3>'+esc(p.full_name||"Unnamed user")+'</h3><span class="pill" style="'+(p.is_verified?'background:#e5f7ee;color:#137447':'background:#eef2f6;color:#526477')+'">'+(p.is_verified?'✓ VERIFIED':'NOT VERIFIED')+'</span></div><p><b>Type:</b> '+esc(p.role.toUpperCase())+' · <b>Company:</b> '+esc(p.company_name||"Not provided")+' · <b>Country:</b> '+esc(p.country||"Not provided")+'</p><p class="muted">Account status: '+esc(p.account_status||"active")+' · ID: '+esc(p.id)+'</p><button type="button" class="'+(p.is_verified?'secondary':'')+'" data-verify-user="'+esc(p.id)+'" data-verify-next="'+(!p.is_verified)+'">'+(p.is_verified?'Remove verification':'Mark as verified')+'</button></div>'
     ).join("");
   };
+  if(auditResult.error){auditRoot.textContent="Verification audit history unavailable. Apply supabase/verification-audit-and-security.sql. Details: "+auditResult.error.message;}
+  else {
+    const events=auditResult.data||[];
+    auditRoot.innerHTML=events.length?events.map(event=>'<div class="product"><strong>'+esc(event.target_name||"Account")+'</strong> · '+esc(event.target_company||"Company not provided")+'<p>'+esc(event.target_role.toUpperCase())+' · '+(event.previous_verified?'VERIFIED':'NOT VERIFIED')+' → <b>'+(event.new_verified?'VERIFIED':'NOT VERIFIED')+'</b></p><p class="muted">Changed by '+esc(event.actor_email)+' · '+new Date(event.changed_at).toLocaleString()+'</p></div>').join(""):'<div class="empty">No verification changes recorded yet.</div>';
+  }
   $("adminVerificationSearch").oninput=render;
   root.onclick=async e=>{
     const btn=e.target.closest("[data-verify-user]");
     if(!btn)return;
     const next=btn.dataset.verifyNext==="true";
-    if(!confirm(next?"Mark this account as verified?":"Remove verification from this account?"))return;
+    if(!confirm(next?"Mark this account as verified? Please confirm you reviewed their business details.":"Remove verification from this account?"))return;
     btn.disabled=true;
     const {error:updateError}=await db.rpc("admin_set_verification",{p_user_id:btn.dataset.verifyUser,p_verified:next});
     if(updateError){setStatus("Could not update verification: "+updateError.message);btn.disabled=false;return;}
