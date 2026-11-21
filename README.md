@@ -43,36 +43,38 @@ Open the Supabase project SQL Editor and apply only the migrations that are stil
 
 ### Marketplace/admin/security migrations
 
-After the base setup, apply the following in order if they have not already been applied:
+After the base setup, apply these migrations in order if they are still missing from the Supabase project. The sequence matters: several newer admin migrations depend on the trusted-admin helper, and the final policy migration must be applied after earlier policy changes.
+
+**Legacy admin and privacy policies — apply these first:**
 
 1. `supabase/enable-admin-role.sql` — allows the `admin` profile role and assigns it to the configured administrator Auth account. The administrator account must already exist and have a profile.
 2. `supabase/admin-users.sql` — account status and admin user-management functions.
 3. `supabase/complete-google-profile.sql` — securely saves the selected Google signup role and initial business details before the account starts marketplace activity.
-4. `supabase/admin-contact-directory.sql` — admin-only buyer/seller email and phone directory.
-5. `supabase/admin-membership-review.sql` — admin-only seller membership payment history.
-6. `supabase/admin-products.sql` — admin product review and status control.
-7. `supabase/admin-requirements.sql` — admin requirement management.
-8. `supabase/admin-sellers.sql` — admin access to seller profiles.
-9. `supabase/admin-rfqs.sql` — admin RFQ visibility policy.
-10. `supabase/protect-buyer-privacy.sql` — removes buyer IDs from ordinary authenticated RFQ/requirement column access and provides admin-only reporting.
-11. `supabase/admin_rfq_export.sql` — admin RFQ report/export function and profile-directory policy. Apply after the privacy migration so this typed RFQ report definition is the final one.
-12. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks and replaces legacy permissive marketplace RLS policies. It also installs buyer-ownership and bid-conversation authorization helpers so bid/bid-message policies remain compatible with the restricted `buyer_id` column grants. Run after `admin-users.sql`, `dashboard.sql`, and the admin/privacy policy migrations above. Re-run it after any later migration that recreates the affected product, RFQ or RFQ-message policies.
-13. `supabase/prevent-duplicate-membership-requests.sql` — adds a database trigger to prevent duplicate pending membership requests and overlapping active memberships. Run after `dashboard.sql` and `enforce-account-suspension.sql`.
-14. `supabase/profile-photos.sql` — private profile photo storage bucket, owner-only object policies and avatar RPC. If this migration was previously run while the bucket was public, re-run the updated file to make the bucket private.
-15. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
-16. `supabase/verification-badges.sql` — adds the admin-managed verification flags, audit log and limited public badge lookup RPCs. Apply it so the Admin verification panel and public badge displays work.
-17. `supabase/admin-message-monitoring.sql` — adds administrator-only read-only RPCs for message conversation lists and private RFQ/bid chat history. Apply it to enable the Admin Message Monitoring panel.
+4. `supabase/admin-contact-directory.sql` — initial admin-only buyer/seller email and phone directory.
+5. `supabase/admin-products.sql` — initial admin product review and status control.
+6. `supabase/admin-requirements.sql` — initial admin requirement management.
+7. `supabase/admin-rfqs.sql` — initial admin RFQ visibility policy.
+8. `supabase/protect-buyer-privacy.sql` — removes buyer IDs from ordinary authenticated RFQ/requirement column access and provides admin-only reporting.
+9. `supabase/admin_rfq_export.sql` — admin RFQ report/export function and profile-directory policy. Apply after the privacy migration.
 
-The migrations above are source files only until they are run in the correct Supabase project.
+**Trusted-admin hardening and dependent admin features — apply after the legacy files above:**
 
-**Important re-run warning:** Do not re-run `schema.sql` on an existing database. Although `dashboard.sql` uses `IF NOT EXISTS` and replaces named policies, it recreates some baseline policies without the later membership/suspension restrictions. If you must re-run `dashboard.sql`, immediately re-run `enforce-account-suspension.sql` afterward. Never run `dashboard.sql` after the final security migration and then leave it unapplied.
+10. `supabase/admin-role-hardening.sql` — creates `is_trusted_marketplace_admin()` and replaces legacy email-only admin policies/RPCs. Admin access now requires both the configured administrator email and `profiles.role = 'admin'`. Apply this before the next three files.
+11. `supabase/admin-membership-review.sql` — admin-only seller membership history RPC; requires the helper from step 10.
+12. `supabase/admin-sellers.sql` — admin-only seller profile visibility; requires the helper from step 10.
+13. `supabase/admin-membership-payment-hardening.sql` — hardens membership payment visibility and approval/history RPCs; requires the helper from step 10.
+14. `supabase/admin-requirements-rpc-hardening.sql` — adds the role-checked admin requirement-list RPC used by the dashboard.
+15. `supabase/verification-audit-and-security.sql` — current verification migration, including the admin-only verification audit RPC used by the dashboard. Use this current file instead of relying only on the older `verification-badges.sql`. If the older file was already applied, run this newer migration afterward.
+16. `supabase/admin-message-monitoring.sql` — admin-only, read-only RPCs for conversation lists and private RFQ/bid chat histories.
 
-**Important ordering rule:** `enforce-account-suspension.sql` is the final policy-hardening step for products, RFQs and RFQ messages. Do not run an older policy-creation script after it unless you then re-run this enforcement migration. GitHub commits do not execute SQL in Supabase; each required migration must still be applied in the Supabase SQL Editor, only once where indicated. Several are safe to re-run, but the initial `schema.sql` is a one-time setup. Do not run every file blindly or run a data-repair script unless the specific issue exists.
+**Final marketplace policy and supporting migrations:**
 
-**RFQ role-check update:** On an existing Supabase project, re-run the current `supabase/enforce-account-suspension.sql` from this repository to apply the buyer-role checks for RFQ creation and private RFQ conversations. This migration is safe to re-run and does not change existing marketplace records. Do not re-run `dashboard.sql` on an existing database.
+17. `supabase/enforce-account-suspension.sql` — applies active/suspended account checks and replaces legacy permissive product, RFQ and message policies. Run after `admin-users.sql`, `dashboard.sql`, buyer-privacy and the admin policy migrations above. Re-run it after any later migration that recreates the affected product, RFQ or RFQ-message policies.
+18. `supabase/prevent-duplicate-membership-requests.sql` — adds a database trigger to prevent duplicate pending membership requests and overlapping active memberships. Run after `dashboard.sql` and `enforce-account-suspension.sql`.
+19. `supabase/profile-photos.sql` — private profile photo storage bucket, owner-only object policies and avatar RPC. If this migration was previously run while the bucket was public, re-run the updated file to make the bucket private.
+20. `supabase/lock-marketplace-identities.sql` — prevents RFQ/bid ownership and original request identity fields from being rewritten.
 
-**Profile-photo privacy update:** Re-run the current `supabase/profile-photos.sql` on an existing project to change the `profile-photos` bucket from public to private. The dashboard now uses a short-lived signed URL to display the signed-in user's own uploaded photo. This migration is safe to re-run.
-
+The migrations above are source files only until they are run in the correct Supabase project. Do not assume that a file in GitHub has already been executed in Supabase.
 ### Optional repair scripts
 
 - `supabase/fix-buyer-requirement-bids-permission.sql` — older targeted repair for buyer-owned bid reads and private bid messages when the restricted `buyer_id` column caused permission errors. The current `enforce-account-suspension.sql` includes these helper policies, so re-run that current enforcement file instead of applying this repair separately.
