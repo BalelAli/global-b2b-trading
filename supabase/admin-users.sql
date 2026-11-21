@@ -25,6 +25,7 @@ for select
 to authenticated
 using (
   lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
+  and exists (select 1 from public.profiles admin_profile where admin_profile.id = auth.uid() and admin_profile.role = 'admin')
   and role in ('buyer', 'seller')
 );
 
@@ -55,7 +56,8 @@ declare
   v_actor_email text;
 begin
   v_actor_email := lower(coalesce(auth.jwt() ->> 'email', ''));
-  if v_actor_email <> 'balelali953@gmail.com' then
+  if v_actor_email <> 'balelali953@gmail.com'
+     or not exists (select 1 from public.profiles a where a.id = auth.uid() and a.role = 'admin') then
     raise exception 'Not authorized to manage marketplace users';
   end if;
 
@@ -105,7 +107,8 @@ security definer
 set search_path = ''
 as $$
 begin
-  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com' then
+  if lower(coalesce(auth.jwt() ->> 'email', '')) <> 'balelali953@gmail.com'
+     or not exists (select 1 from public.profiles a where a.id = auth.uid() and a.role = 'admin') then
     raise exception 'Not authorized to view account status history';
   end if;
 
