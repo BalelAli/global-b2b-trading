@@ -1,11 +1,10 @@
--- Global B2B Trading: allow the trusted admin to view seller profiles
--- Safe to re-run. This adds read-only admin visibility; it does not change seller accounts.
+-- Admin-only seller profile visibility.
+-- Uses the trusted admin helper from admin-role-hardening.sql.
+-- Safe to re-run; does not modify seller records.
 
 drop policy if exists "Admin can view all seller profiles" on public.profiles;
 create policy "Admin can view all seller profiles"
 on public.profiles
 for select
 to authenticated
-using (
-  lower(coalesce(auth.jwt() ->> 'email', '')) = 'balelali953@gmail.com'
-);
+using (public.is_trusted_marketplace_admin());
