@@ -42,7 +42,7 @@ textarea{min-height:88px;resize:vertical}
 </head>
 <body>
 <canvas id="dashboardScenery" aria-hidden="true"></canvas>
-<header id="top"><div class="brand">GLOBAL <span>B2B</span> TRADING</div><div><a class="secondary header-home-link" href="#top">Home</a> <button class="secondary" id="messagesBtn" type="button">✉ Messages</button> <button id="logoutBtn" type="button">Sign out</button></div></header>
+<header id="top"><div class="brand">GLOBAL <span>B2B</span> TRADING</div><div><a class="secondary header-home-link" href="#top" id="headerHomeBtn">Home</a> <button class="secondary" id="messagesBtn" type="button">✉ Messages</button> <button id="logoutBtn" type="button">Sign out</button></div></header>
 <main>
   <div class="welcome"><h1 id="welcomeTitle">Your dashboard</h1><p id="welcomeSub">Loading your account…</p><div id="settings" class="profile-tools hidden"><div id="profileAvatar" class="profile-avatar" aria-label="Profile picture"></div><div><button type="button" id="profileUploadBtn" class="profile-upload-btn">📷 Change profile picture</button><input type="file" id="profilePictureInput" accept="image/jpeg,image/png,image/webp"><p class="muted">JPG, PNG or WebP · Maximum 2 MB</p></div></div></div>
   <div id="pageStatus" class="status" role="status" aria-live="polite"></div>
@@ -237,6 +237,8 @@ async function renderProfileAvatar(){
 }
 $("profileUploadBtn").addEventListener("click",()=>$("profilePictureInput").click());
 $("profilePictureInput").addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;if(!["image/jpeg","image/png","image/webp"].includes(file.type)){setStatus("Please choose a JPG, PNG or WebP image.");e.target.value="";return;}if(file.size>2*1024*1024){setStatus("Image must be 2 MB or smaller.");e.target.value="";return;}const btn=$("profileUploadBtn");btn.disabled=true;setStatus("Uploading profile picture…");const path=currentUser.id+"/avatar";const {error:uploadError}=await db.storage.from("profile-photos").upload(path,file,{upsert:true,contentType:file.type,cacheControl:"3600"});if(uploadError){setStatus("Could not upload profile picture: "+uploadError.message);btn.disabled=false;e.target.value="";return;}const {error:saveError}=await db.rpc("set_my_profile_avatar",{p_avatar_path:path});if(saveError){setStatus("Image uploaded but profile could not be updated: "+saveError.message);btn.disabled=false;e.target.value="";return;}currentProfile.avatar_path=path;renderProfileAvatar();setStatus("Profile picture updated successfully.");btn.disabled=false;e.target.value="";});
+
+$("headerHomeBtn").addEventListener("click", (event) => { event.preventDefault(); alert("You are already on the Home page."); });
 
 $("messagesBtn").addEventListener("click", () => window.top.location.href = "./messenger.html");
 $("logoutBtn").addEventListener("click", async () => {
