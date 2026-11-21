@@ -102,7 +102,7 @@ textarea{min-height:88px;resize:vertical}
   <section id="adminVerificationArea" class="hidden">
     <article class="card">
       <h2>Admin — Buyer & Seller Verification</h2>
-      <p class="muted">Manually verify a buyer or seller after reviewing their business information. Verified badges are public; private email, phone and payment information remain hidden.</p>
+      <p class="muted">Documents are NOT mandatory. Review the business name, country, profile details, products or requirements, and—when needed—contact details or a company website from Admin User Management. You may contact the account directly to confirm. Optional trade license or other documents may be checked if voluntarily provided outside this dashboard. Only mark Verified when you have reasonably confirmed the business identity. Verified badges are public; private email, phone and payment information remain hidden.</p><div class="product"><strong>Verification checklist (lightweight)</strong><ul><li>Business/company name and country make sense</li><li>Profile, product or buyer requirement details look credible</li><li>Contact/email/website checked if available; contact directly if uncertain</li><li>Documents are optional—not required for verification</li></ul></div>
       <label for="adminVerificationSearch">Search accounts</label>
       <input id="adminVerificationSearch" type="search" placeholder="Search name, company, country or account ID…">
       <div id="adminVerificationList">Loading verification accounts…</div><h3 style="margin-top:22px">Verification change history</h3><p class="muted">Latest 20 verification and removal actions, visible to administrators only.</p><div id="adminVerificationAuditList">Loading verification history…</div>
@@ -483,7 +483,7 @@ async function loadAdminVerification(){
     const btn=e.target.closest("[data-verify-user]");
     if(!btn)return;
     const next=btn.dataset.verifyNext==="true";
-    if(!confirm(next?"Mark this account as verified? Please confirm you reviewed their business details.":"Remove verification from this account?"))return;
+    if(!confirm(next?"Mark as VERIFIED? Confirm that you checked the business/profile details and, if needed, contact or website. Documents are optional and not required.":"Remove verification from this account?"))return;
     btn.disabled=true;
     const {error:updateError}=await db.rpc("admin_set_verification",{p_user_id:btn.dataset.verifyUser,p_verified:next});
     if(updateError){setStatus("Could not update verification: "+updateError.message);btn.disabled=false;return;}
