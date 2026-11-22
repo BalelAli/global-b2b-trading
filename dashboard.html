@@ -44,6 +44,10 @@ textarea{min-height:88px;resize:vertical}
 .admin-collapsible article.card{padding-top:18px;padding-bottom:18px}
 .admin-collapsible.expanded article.card{padding-bottom:22px}
 .admin-collapsible h2:focus-visible{outline:3px solid #7bb8df;outline-offset:4px;border-radius:5px}
+#adminQuickNav:not(.hidden){display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+#adminQuickNav button{padding:9px 12px;font-size:13px}
+#adminQuickNav button:hover{transform:translateY(-1px)}
+
 @media(max-width:600px){.formgrid{grid-template-columns:1fr}header{padding:12px 16px}.welcome{padding:24px 21px;border-radius:14px}main{margin:20px auto;padding:0 14px 32px}.card{padding:17px}.grid{grid-template-columns:1fr}}
 </style>
   <link rel="stylesheet" href="./assets/dashboard-scenery.css?v=1">
@@ -54,6 +58,7 @@ textarea{min-height:88px;resize:vertical}
 <main>
   <div class="welcome"><h1 id="welcomeTitle">Your dashboard</h1><p id="welcomeSub">Loading your account…</p><div id="settings" class="profile-tools hidden"><div id="profileAvatar" class="profile-avatar" aria-label="Profile picture"></div><div><button type="button" id="profileUploadBtn" class="profile-upload-btn">📷 Change profile picture</button><input type="file" id="profilePictureInput" accept="image/jpeg,image/png,image/webp"><p class="muted">JPG, PNG or WebP · Maximum 2 MB</p></div></div></div>
   <div id="pageStatus" class="status" role="status" aria-live="polite"></div>
+<div id="adminQuickNav" class="hidden"><button type="button" data-admin-jump="adminMessagesArea">✉ Messages</button><button type="button" data-admin-jump="adminUsersArea">👥 Users</button><button type="button" data-admin-jump="adminRequirementsArea">▤ Requirements</button><button type="button" data-admin-jump="adminMembershipArea">💳 Membership</button><button type="button" data-admin-jump="adminVerificationArea">✓ Verification</button><button type="button" data-admin-jump="adminProductsArea">▦ Products</button><button type="button" data-admin-jump="adminRfqArea">RFQ</button><button type="button" data-admin-jump="adminSellersArea">Seller Management</button></div>
   <section id="adminMembershipArea" class="hidden">
     <article class="card">
       <h2>Admin — Seller Membership Review</h2>
@@ -310,7 +315,7 @@ async function loadProfile() {
   $("welcomeTitle").textContent = "Welcome, " + (data.full_name || data.company_name || "member");
   $("welcomeSub").textContent = data.company_name + " · " + data.country + " · " + data.role.toUpperCase() + (isVerified ? " · ✓ VERIFIED" : "");
   if (data.role === "buyer" || data.role === "seller" || data.role === "admin") { $("settings").classList.remove("hidden"); renderProfileAvatar(); }
-  if (data.role === "admin") { $("messagesBtn").classList.add("hidden");
+  if (data.role === "admin") { $("adminQuickNav").classList.remove("hidden"); $("messagesBtn").classList.add("hidden");
     $("adminMembershipArea").classList.remove("hidden");
     $("adminRequirementsArea").classList.remove("hidden");
     $("adminSellersArea").classList.remove("hidden");
@@ -983,6 +988,16 @@ start().catch(err => {
 <script>
 (()=> {
   const ids=["adminMembershipArea","adminRequirementsArea","adminSellersArea","adminUsersArea","adminVerificationArea","adminProductsArea","adminRfqArea","adminMessagesArea"];
+  document.querySelectorAll("[data-admin-jump]").forEach(button=>{
+    button.addEventListener("click",()=>{
+      const area=document.getElementById(button.dataset.adminJump);
+      if(!area)return;
+      area.classList.add("expanded");
+      const heading=area.querySelector("h2");
+      if(heading)heading.setAttribute("aria-expanded","true");
+      area.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+  });
   ids.forEach(id=>{
     const area=document.getElementById(id), card=area?.querySelector("article.card"), heading=card?.querySelector("h2");
     if(!area||!card||!heading)return;
