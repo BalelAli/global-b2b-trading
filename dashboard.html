@@ -47,8 +47,11 @@ textarea{min-height:88px;resize:vertical}
 #adminQuickNav:not(.hidden){display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
 #adminQuickNav button{padding:9px 12px;font-size:13px}
 #adminQuickNav button:hover{transform:translateY(-1px)}
+#adminMessageConversations{max-height:360px;overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
+#adminMessageHistory{max-height:440px;overflow-y:auto;overscroll-behavior:contain}
+#adminMessageConversations:focus-visible,#adminMessageHistory:focus-visible{outline:3px solid #7bb8df;outline-offset:2px;border-radius:8px}
 
-@media(max-width:600px){.formgrid{grid-template-columns:1fr}header{padding:12px 16px}.welcome{padding:24px 21px;border-radius:14px}main{margin:20px auto;padding:0 14px 32px}.card{padding:17px}.grid{grid-template-columns:1fr}}
+@media(max-width:600px){#adminMessageConversations{max-height:45vh}#adminMessageHistory{max-height:55vh}.formgrid{grid-template-columns:1fr}header{padding:12px 16px}.welcome{padding:24px 21px;border-radius:14px}main{margin:20px auto;padding:0 14px 32px}.card{padding:17px}.grid{grid-template-columns:1fr}}
 </style>
   <link rel="stylesheet" href="./assets/dashboard-scenery.css?v=1">
 </head>
@@ -153,8 +156,8 @@ textarea{min-height:88px;resize:vertical}
         <div><label for="adminMessageType">Conversation type</label><select id="adminMessageType"><option value="">All types</option><option value="rfq">RFQ</option><option value="bid">Buyer requirement bids</option></select></div>
       </div>
       <p><button type="button" class="secondary" id="adminMessagesRefresh">Refresh conversations</button></p>
-      <div id="adminMessageConversations">Loading conversations…</div>
-      <div id="adminMessageHistory" class="product" style="margin-top:16px">Select a conversation to review its message history.</div>
+      <div id="adminMessageConversations" role="region" aria-label="Message conversation list" tabindex="0">Loading conversations…</div>
+      <div id="adminMessageHistory" class="product" role="region" aria-label="Selected conversation message history" tabindex="0" style="margin-top:16px">Select a conversation to review its message history.</div>
     </article>
   </section>
   <section id="sellerMembershipArea" class="hidden">
