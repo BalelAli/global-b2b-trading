@@ -996,12 +996,13 @@ start().catch(err => {
       const targetId=button.dataset.adminJump;
       const area=document.getElementById(targetId);
       if(!area)return;
-      // Keep only the selected admin section expanded; leave all other sections collapsed.
+      // Show only the section selected by the quick-navigation shortcut.
       ids.forEach(id=>{
         const other=document.getElementById(id);
         if(!other)return;
         const heading=other.querySelector("h2");
         const isTarget=id===targetId;
+        other.classList.toggle("hidden",!isTarget);
         other.classList.toggle("expanded",isTarget);
         if(heading)heading.setAttribute("aria-expanded",String(isTarget));
       });
