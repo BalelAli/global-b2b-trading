@@ -993,11 +993,18 @@ start().catch(err => {
   const ids=["adminMembershipArea","adminRequirementsArea","adminSellersArea","adminUsersArea","adminVerificationArea","adminProductsArea","adminRfqArea","adminMessagesArea"];
   document.querySelectorAll("[data-admin-jump]").forEach(button=>{
     button.addEventListener("click",()=>{
-      const area=document.getElementById(button.dataset.adminJump);
+      const targetId=button.dataset.adminJump;
+      const area=document.getElementById(targetId);
       if(!area)return;
-      area.classList.add("expanded");
-      const heading=area.querySelector("h2");
-      if(heading)heading.setAttribute("aria-expanded","true");
+      // Keep only the selected admin section expanded; leave all other sections collapsed.
+      ids.forEach(id=>{
+        const other=document.getElementById(id);
+        if(!other)return;
+        const heading=other.querySelector("h2");
+        const isTarget=id===targetId;
+        other.classList.toggle("expanded",isTarget);
+        if(heading)heading.setAttribute("aria-expanded",String(isTarget));
+      });
       area.scrollIntoView({behavior:"smooth",block:"start"});
     });
   });
