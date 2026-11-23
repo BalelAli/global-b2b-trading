@@ -61,7 +61,7 @@ textarea{min-height:88px;resize:vertical}
 <main>
   <div class="welcome"><h1 id="welcomeTitle">Your dashboard</h1><p id="welcomeSub">Loading your account…</p><div id="settings" class="profile-tools hidden"><div id="profileAvatar" class="profile-avatar" aria-label="Profile picture"></div><div><button type="button" id="profileUploadBtn" class="profile-upload-btn">📷 Change profile picture</button><input type="file" id="profilePictureInput" accept="image/jpeg,image/png,image/webp"><p class="muted">JPG, PNG or WebP · Maximum 2 MB</p></div></div></div>
   <div id="pageStatus" class="status" role="status" aria-live="polite"></div>
-<div id="adminQuickNav" class="hidden"><button type="button" data-admin-jump="adminMessagesArea">✉ Messages</button><button type="button" data-admin-jump="adminUsersArea">👥 Users</button><button type="button" data-admin-jump="adminRequirementsArea">▤ Requirements</button><button type="button" data-admin-jump="adminMembershipArea">💳 Membership</button><button type="button" data-admin-jump="adminVerificationArea">✓ Verification</button><button type="button" data-admin-jump="adminProductsArea">▦ Products</button><button type="button" data-admin-jump="adminRfqArea">RFQ</button><button type="button" data-admin-jump="adminSellersArea">Seller Management</button></div>
+<div id="adminQuickNav" class="hidden"><button type="button" id="adminShowAllBtn">All Sections</button><button type="button" data-admin-jump="adminMessagesArea">✉ Messages</button><button type="button" data-admin-jump="adminUsersArea">👥 Users</button><button type="button" data-admin-jump="adminRequirementsArea">▤ Requirements</button><button type="button" data-admin-jump="adminMembershipArea">💳 Membership</button><button type="button" data-admin-jump="adminVerificationArea">✓ Verification</button><button type="button" data-admin-jump="adminProductsArea">▦ Products</button><button type="button" data-admin-jump="adminRfqArea">RFQ</button><button type="button" data-admin-jump="adminSellersArea">Seller Management</button></div>
   <section id="adminMembershipArea" class="hidden">
     <article class="card">
       <h2>Admin — Seller Membership Review</h2>
@@ -991,7 +991,7 @@ start().catch(err => {
 <script>
 (()=> {
   const ids=["adminMembershipArea","adminRequirementsArea","adminSellersArea","adminUsersArea","adminVerificationArea","adminProductsArea","adminRfqArea","adminMessagesArea"];
-  document.querySelectorAll("[data-admin-jump]").forEach(button=>{
+  const showAll=document.getElementById("adminShowAllBtn");\n  if(showAll)showAll.addEventListener("click",()=>{\n    ids.forEach(id=>{\n      const area=document.getElementById(id);\n      if(!area)return;\n      area.classList.remove("hidden","expanded");\n      const heading=area.querySelector("h2");\n      if(heading)heading.setAttribute("aria-expanded","false");\n    });\n    document.getElementById("adminQuickNav")?.scrollIntoView({behavior:"smooth",block:"start"});\n  });\n  document.querySelectorAll("[data-admin-jump]").forEach(button=>{
     button.addEventListener("click",()=>{
       const targetId=button.dataset.adminJump;
       const area=document.getElementById(targetId);
