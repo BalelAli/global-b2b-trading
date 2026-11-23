@@ -991,7 +991,18 @@ start().catch(err => {
 <script>
 (()=> {
   const ids=["adminMembershipArea","adminRequirementsArea","adminSellersArea","adminUsersArea","adminVerificationArea","adminProductsArea","adminRfqArea","adminMessagesArea"];
-  const showAll=document.getElementById("adminShowAllBtn");\n  if(showAll)showAll.addEventListener("click",()=>{\n    ids.forEach(id=>{\n      const area=document.getElementById(id);\n      if(!area)return;\n      area.classList.remove("hidden","expanded");\n      const heading=area.querySelector("h2");\n      if(heading)heading.setAttribute("aria-expanded","false");\n    });\n    document.getElementById("adminQuickNav")?.scrollIntoView({behavior:"smooth",block:"start"});\n  });\n  document.querySelectorAll("[data-admin-jump]").forEach(button=>{
+  const showAll=document.getElementById("adminShowAllBtn");
+  if(showAll)showAll.addEventListener("click",()=>{
+    ids.forEach(id=>{
+      const area=document.getElementById(id);
+      if(!area)return;
+      area.classList.remove("hidden","expanded");
+      const heading=area.querySelector("h2");
+      if(heading)heading.setAttribute("aria-expanded","false");
+    });
+    document.getElementById("adminQuickNav")?.scrollIntoView({behavior:"smooth",block:"start"});
+  });
+  document.querySelectorAll("[data-admin-jump]").forEach(button=>{
     button.addEventListener("click",()=>{
       const targetId=button.dataset.adminJump;
       const area=document.getElementById(targetId);
