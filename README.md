@@ -111,7 +111,7 @@ These rules have been reviewed in the repository source. They still require live
 - A real public support email or other support channel still needs to be supplied before publishing the Contact page.
 - PayPal is not available in the current seller payment form; there is no connected PayPal checkout.
 - There is no automatic payment reconciliation, escrow, order-management or shipping integration.
-- Seller/buyer identity verification and independent trust badges are not implemented.
+- Manual Admin-assigned Verified badges are implemented, but they reflect the platform administrator’s own review only. Independent third-party or government identity verification and certification are not provided.
 - Product RFQs now have a private two-way message interface for the buyer and the relevant supplier. The admin RFQ report does not display private RFQ chat content.
 - The marketplace has not yet passed end-to-end tests with separate buyer, seller and administrator accounts.
 
