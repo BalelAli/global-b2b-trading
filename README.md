@@ -26,7 +26,7 @@ Global B2B Trading is an early-stage international B2B marketplace. The public s
 
 ## Payment status — important
 
-The current seller dashboard offers **manual bKash and Nagad Send Money** membership payments. A seller submits a transaction reference; the administrator must verify and approve it before bidding is enabled.
+The current seller dashboard offers **manual Nagad Send Money only** for membership payments. A seller submits a transaction reference; the administrator must verify and approve it before bidding is enabled.
 
 **PayPal checkout/payment links are not connected in the dashboard yet.** The database's allowed payment-method values do not mean that a PayPal checkout or link is configured. Do not select or advertise PayPal as available until a real PayPal payment link or a properly configured payment integration has been added and tested. Payments are not automatically collected or reconciled by this website.
 
